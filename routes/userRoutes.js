@@ -3,6 +3,7 @@ import User from '../models/User.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
 const { authenticateToken } = authMiddleware;
 import {userSignupSchema, loginSchema, updateProfileSchema, cartSchema}  from '../validator/userValidator.js'
+import { sendSuccess, sendError } from '../utils/responseHandler.js';
 import { validateRequest } from '../middlewares/validator.js';
 import bcrypt from 'bcrypt';
 import pkg from 'jsonwebtoken';
@@ -35,11 +36,10 @@ router.post('/signup', validateRequest(userSignupSchema), async (req, res) => {
         });
 
         await newUser.save();
-
-        res.status(201).json({ message: 'Sign-up successful', userId: newUser._id });
+        sendSuccess(res,'Sign-up successful',{ userId: newUser._id }, 201)
     } catch (error) {
-        next(error); 
-        }
+        sendError(res, 'Error during sign-up', 500);
+    }
 });
 
 // Login
@@ -56,10 +56,10 @@ router.post('/login', validateRequest(loginSchema),async (req, res) => {
             expiresIn: '1h',
         });
 
-        res.json({ message: 'Login successful', token });
+        sendSuccess(res, 'Login successful', { token });
     } catch (error) {
-        res.status(500).json({ message: 'Error during login', error: error.message });
-        next(error);     } 
+        sendError(res, 'Error during login', 500);
+    } 
 });
 
 // Get User Profile
@@ -70,9 +70,9 @@ router.get('/profile/:id', authenticateToken,async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        res.status(200).json(user);
+        sendSuccess(res, 'User profile fetched successfully', user);
     } catch (error) {
-        next(error); 
+        sendError(res, 'Error fetching profile', 500);
     }
 });
 
@@ -93,9 +93,9 @@ router.post('/cart', authenticateToken, validateRequest(cartSchema),async (req, 
         }
 
         await user.save();
-        res.status(200).json({ message: 'Cart updated successfully', cart: user.cart });
+        sendSuccess(res, 'Cart updated successfully', user.cart);
     } catch (error) {
-        res.status(500).json({ message: 'Error updating cart', error: error.message });
+        sendError(res, 'Error updating cart', 500);
     }
 });
 
@@ -103,11 +103,11 @@ router.post('/cart', authenticateToken, validateRequest(cartSchema),async (req, 
 router.get('/cart', authenticateToken, async (req, res) => {
     try {
         const user = await User.findById(req.user.id).populate('cart.productId');
-        if (!user) return res.status(404).json({ message: 'User not found' });
+        if (!user)  return sendError(res, 'User not found', 404);
 
-        res.status(200).json(user.cart);
+        sendSuccess(res, 'Cart fetched successfully', user.cart);
     } catch (error) {
-        res.status(500).json({ message: 'Error fetching cart', error: error.message });
+        sendError(res, 'Error fetching cart', 500);
     }
 });
 
@@ -138,9 +138,9 @@ router.put('/profile', authenticateToken, validateRequest(updateProfileSchema), 
             return res.status(404).json({ message: 'User not found' });
         }
 
-        res.status(200).json({ message: 'User details updated successfully'});
+        sendSuccess(res, 'User details updated successfully', updatedUser);
     } catch (error) {
-        next(error); 
+        sendError(res, 'Error updating user details', 500);
     }
 });
 
