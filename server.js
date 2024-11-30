@@ -5,6 +5,7 @@ import { config } from 'dotenv';
 import cors from 'cors';
 import connectDB from './config/db.js';
 import setupRoutes from './routes/allRoutes.js'
+import { errorHandler } from './middlewares/errorHandler.js';
 // Load environment variables
 config();
 
@@ -20,7 +21,7 @@ connectDB();
 
 // Setup Routes
 setupRoutes(app); // Load all routes using the route loader
-
+app.use(errorHandler);
 // Default Route
 app.get('/', (req, res) => {
     res.json({ message: 'Welcome to the API!' });

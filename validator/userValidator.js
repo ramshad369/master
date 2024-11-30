@@ -5,9 +5,9 @@ import JoiObjectId from 'joi-objectid';
 const JoiObjectIdExtension = JoiObjectId(Joi);
 // Validation schema for sign-up
 export const userSignupSchema = Joi.object({
-    phone: Joi.string().pattern(/^\d{10}$/).required().messages({
-        'string.pattern.base': 'Phone number must be 10 digits',
-    }),
+    phone: Joi.string().pattern(/^[+\d]?[0-9-]*$/).required().messages({
+        'string.pattern.base': 'Phone number must contain only valid characters (digits, dashes, or a leading "+")',
+    }),    
     password: Joi.string().min(6).required().messages({
         'string.min': 'Password must be at least 6 characters long',
     }),

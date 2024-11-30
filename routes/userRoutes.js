@@ -38,8 +38,8 @@ router.post('/signup', validateRequest(userSignupSchema), async (req, res) => {
 
         res.status(201).json({ message: 'Sign-up successful', userId: newUser._id });
     } catch (error) {
-        res.status(500).json({ message: 'Error during sign-up', error: error.message });
-    }
+        next(error); 
+        }
 });
 
 // Login
@@ -59,7 +59,7 @@ router.post('/login', validateRequest(loginSchema),async (req, res) => {
         res.json({ message: 'Login successful', token });
     } catch (error) {
         res.status(500).json({ message: 'Error during login', error: error.message });
-    } 
+        next(error);     } 
 });
 
 // Get User Profile
@@ -72,7 +72,7 @@ router.get('/profile/:id', authenticateToken,async (req, res) => {
 
         res.status(200).json(user);
     } catch (error) {
-        res.status(500).json({ message: 'Error fetching profile', error: error.message });
+        next(error); 
     }
 });
 
@@ -140,7 +140,7 @@ router.put('/profile', authenticateToken, validateRequest(updateProfileSchema), 
 
         res.status(200).json({ message: 'User details updated successfully'});
     } catch (error) {
-        res.status(500).json({ message: 'Error updating user details', error: error.message });
+        next(error); 
     }
 });
 
