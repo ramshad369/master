@@ -8,15 +8,15 @@ import User from '../models/User.js';
 const router = Router();
 
 // Pre-create the super admin
-(async () => {
-    const existingSuperAdmin = await User.findOne({ role: 'superadmin' });
-    if (!existingSuperAdmin) {
-        const hashedPassword = hashSync('superadmin123', 8);
-        const superAdmin = new User({ username: 'superadmin', password: hashedPassword, role: 'superadmin' });
-        await superAdmin.save();
-        console.log('Super admin created successfully');
-    }
-})();
+// (async () => {
+//     const existingSuperAdmin = await User.findOne({ role: 'superadmin' });
+//     if (!existingSuperAdmin) {
+//         const hashedPassword = hashSync('superadmin123', 8);
+//         const superAdmin = new User({ username: 'superadmin', password: hashedPassword, role: 'superadmin' });
+//         await superAdmin.save();
+//         console.log('Super admin created successfully');
+//     }
+// })();
 
 // Get All Users (Admin or Super Admin)
 router.get('/users', authenticateToken, authorizeRole('admin'), async (req, res) => {
