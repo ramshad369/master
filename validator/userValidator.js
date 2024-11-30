@@ -23,10 +23,9 @@ export const userSignupSchema = Joi.object({
 
 // Login Schema
 export const loginSchema = Joi.object({
-    phone: Joi.string().pattern(/^\d{10}$/).required().messages({
-        'string.pattern.base': 'Phone number must be 10 digits',
-        'any.required': 'Phone number is required',
-    }),
+    phone: Joi.string().pattern(/^[+\d]?[0-9-]*$/).required().messages({
+        'string.pattern.base': 'Phone number must contain only valid characters (digits, dashes, or a leading "+")',
+    }),    
     password: Joi.string().min(6).required().messages({
         'string.min': 'Password must be at least 6 characters long',
         'any.required': 'Password is required',
