@@ -146,7 +146,7 @@ router.get('/', async (req, res) => {
 
         sendSuccess(res, 'Products fetched successfully', productsWithImageUrl, 200);
     } catch (error) {
-        sendError(res, 'Error fetching products', 500, error.message);
+        sendError(res, error.message, 500);
     }
 });
 
@@ -171,7 +171,7 @@ router.get('/:id', async (req, res) => {
 
         sendSuccess(res, 'Product fetched successfully', productWithImageUrl, 200);
     } catch (error) {
-        sendError(res, 'Error fetching product', 500, error.message);
+        sendError(res, error.message, 500);
     }
 });
 

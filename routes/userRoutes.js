@@ -70,7 +70,7 @@ router.post('/signup', validateRequest(userSignupSchema), async (req, res) => {
 
         sendSuccess(res, 'Sign-up successful. Please verify OTP.', { userId: newUser._id }, 201);
     } catch (error) {
-        sendError(res, 'Error during sign-up', 500);
+        sendError(res, error.message, 500);
     }
 });
 
@@ -99,7 +99,7 @@ router.post('/verify-otp', async (req, res) => {
 
         sendSuccess(res, 'OTP verified successfully. Sign-up complete.', null, 200);
     } catch (error) {
-        sendError(res, 'Error during OTP verification', 500);
+        sendError(res, error.message, 500);
     }
 });
 
@@ -141,7 +141,7 @@ router.post('/forgot-password', async (req, res) => {
         }
         sendSuccess(res, 'OTP sent successfully. Please check your phone or email.', null, 200);
     } catch (error) {
-        sendError(res, 'Error during OTP generation', 500);
+        sendError(res,error.message, 500);
     }
 });
 
@@ -177,7 +177,7 @@ router.post('/reset-password', async (req, res) => {
 
         sendSuccess(res, 'Password reset successfully. You can now log in with your new password.', null, 200);
     } catch (error) {
-        sendError(res, 'Error during password reset', 500);
+        sendError(res, error.message, 500);
     }
 });
 
@@ -198,7 +198,7 @@ router.post('/login', validateRequest(loginSchema),async (req, res) => {
 
         sendSuccess(res, 'Login successful', { token });
     } catch (error) {
-        sendError(res, 'Error during login', 500);
+        sendError(res, error.message, 500);
     } 
 });
 
@@ -212,7 +212,7 @@ router.get('/profile/:id', authenticateToken,async (req, res) => {
 
         sendSuccess(res, 'User profile fetched successfully', user);
     } catch (error) {
-        sendError(res, 'Error fetching profile', 500);
+        sendError(res, error.message, 500);
     }
 });
 
@@ -235,7 +235,7 @@ router.post('/cart', authenticateToken, validateRequest(cartSchema),async (req, 
         await user.save();
         sendSuccess(res, 'Cart updated successfully', user.cart);
     } catch (error) {
-        sendError(res, 'Error updating cart', 500);
+        sendError(res, error.message, 500);
     }
 });
 
@@ -247,7 +247,7 @@ router.get('/cart', authenticateToken, async (req, res) => {
 
         sendSuccess(res, 'Cart fetched successfully', user.cart);
     } catch (error) {
-        sendError(res, 'Error fetching cart', 500);
+        sendError(res, error.message, 500);
     }
 });
 
@@ -280,7 +280,7 @@ router.put('/profile', authenticateToken, validateRequest(updateProfileSchema), 
 
         sendSuccess(res, 'User details updated successfully', updatedUser);
     } catch (error) {
-        sendError(res, 'Error updating user details', 500);
+        sendError(res, error.message, 500);
     }
 });
 
