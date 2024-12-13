@@ -134,11 +134,26 @@ router.put('/:id',
     }
 );
 
-// Get all products (No auth needed)
 router.get('/', async (req, res) => {
     try {
-        // Fetch all products from the database
-        const products = await Product.find();
+        // Destructure query parameters from the request
+        const { title, category } = req.query;
+
+        // Build the query object
+        let query = {};
+
+        // If a title is provided in the query, add it to the query filter (case-insensitive)
+        if (title) {
+            query.title = { $regex: title, $options: 'i' }; // 'i' makes the search case-insensitive
+        }
+
+        // If a category is provided in the query, add it to the query filter
+        if (category) {
+            query.category = { $regex: category, $options: 'i' }; // 'i' makes the search case-insensitive
+        }
+
+        // Fetch products based on the query
+        const products = await Product.find(query);
 
         // Ensure that the image field has the full URL or path
         const productsWithImageUrl = products.map(product => ({
