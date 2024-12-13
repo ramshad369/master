@@ -6,8 +6,9 @@ const productSchema = new Schema({
     price: { type: Number, required: true },           
     originalPrice: { type: Number, required: true },   
     discount: { type: Number },                       
-    rating: { type: Number, required: true },          
-    image: { type: String },                           
+    rating: { type: Number },          
+    image: { type: String },
+    stocks: { type: Number, required: true, default: 0 }                           
 }, { timestamps: true });
 
 export default model('Product', productSchema);

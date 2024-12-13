@@ -10,7 +10,7 @@ const JWT_SECRET = process.env.JWT_SECRET; // Replace with environment variable 
     if (!token) {
         return sendError(res, 'Unauthorized', 401);
     }
-
+    
     verify(token, JWT_SECRET, (err, user) => {
         if (err) {
             return sendError(res, 'Forbidden', 403);

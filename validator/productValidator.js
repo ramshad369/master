@@ -1,6 +1,6 @@
 import Joi from 'joi';
 
-// Validation schema for creating a product
+
 export const createProductSchema = Joi.object({
     title: Joi.string().min(3).max(100).required().messages({
         'string.base': 'Title must be a string',
@@ -36,7 +36,13 @@ export const createProductSchema = Joi.object({
     image: Joi.string().uri().optional().messages({
         'string.uri': 'Image URL must be a valid URI',
     }),
+    stocks: Joi.number().min(0).required().messages({ // Ensure stocks is provided
+        'number.base': 'Stocks must be a number',
+        'number.min': 'Stocks cannot be negative',
+        'any.required': 'Stocks is required',
+    }),
 });
+
 
 // Validation schema for updating a product
 export const updateProductSchema = Joi.object({
@@ -71,7 +77,12 @@ export const updateProductSchema = Joi.object({
     image: Joi.string().uri().optional().messages({
         'string.uri': 'Image URL must be a valid URI',
     }),
+    stocks: Joi.number().min(0).optional().messages({
+        'number.base': 'Stocks must be a number',
+        'number.min': 'Stocks cannot be negative',
+    }),
 });
+
 
 export const deleteProductSchema = Joi.object({
     id: Joi.string().hex().length(24).required().messages({

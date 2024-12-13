@@ -61,6 +61,13 @@ export const resetPasswordSchema = Joi.object({
 export const loginSchema = Joi.object({
     phone: Joi.string().pattern(/^[+\d]?[0-9-]*$/).required().messages({
         'string.pattern.base': 'Phone number must contain only valid characters (digits, dashes, or a leading "+")',
+    }),
+    countryCode: Joi.string()
+    .pattern(/^\+\d{1,3}$/)
+    .required()
+    .messages({
+        'string.pattern.base': 'Country code must be in the format "+XXX" (e.g., "+971")',
+        'any.required': 'Country code is required',
     }),    
     password: Joi.string().min(6).required().messages({
         'string.min': 'Password must be at least 6 characters long',

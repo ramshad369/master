@@ -42,7 +42,7 @@ router.post('/',
   upload.single('image'), // This is where the image is uploaded
   validateRequest(createProductSchema), // Validating the request body for product creation
   async (req, res) => {
-    const { title, category, price, originalPrice, discount, rating } = req.body;
+    const { title, category, price, originalPrice, discount, rating, stocks } = req.body;
     let imageUrl = req.file ? `/uploads/${req.file.filename}` : null; // Store the image URL or path
 
     try {
@@ -53,7 +53,8 @@ router.post('/',
             originalPrice, 
             discount, 
             rating, 
-            image: imageUrl // Image URL is stored in the database
+            image: imageUrl,
+            stocks 
         });
 
         await newProduct.save();
@@ -71,7 +72,7 @@ router.put('/:id',
     validateRequest(updateProductSchema), // Validating the request body for product update
     async (req, res) => {
       const { id } = req.params;
-      const { title, category, price, originalPrice, discount, rating } = req.body;
+      const { title, category, price, originalPrice, discount, rating, stocks } = req.body;
       
       // Handle the uploaded image if any
       let imageUrl = req.file ? `/uploads/${req.file.filename}` : undefined; // If a new image is uploaded, save the new image URL
@@ -99,7 +100,8 @@ router.put('/:id',
                   originalPrice, 
                   discount, 
                   rating, 
-                  image: imageUrl // Update with the new image URL if uploaded
+                  image: imageUrl,
+                  stocks: stocks !== undefined ? stocks : existingProduct.stocks
               }, 
               { new: true } // Return the updated product
           );
