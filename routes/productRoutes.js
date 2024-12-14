@@ -26,55 +26,59 @@ const storage = multer.memoryStorage(); // Store files in memory temporarily
 
 const upload = multer({ storage });
 
-// Create a new product route (Admin only)
-router.post('/', 
-  authenticateToken, 
-  authorizeRole('admin'), 
-  upload.single('image'), // This is where the image is uploaded
-  validateRequest(createProductSchema), // Validating the request body for product creation
-  async (req, res) => {
-    const { title, category, price, originalPrice, discount, rating, stocks } = req.body;
-    const file = req.file;
+router.post(
+    '/',
+    authenticateToken,
+    authorizeRole('admin'),
+    upload.single('image'), // Handles the file upload
+    validateRequest(createProductSchema),
+    async (req, res) => {
+        const { title, category, price, originalPrice, discount, rating, stocks } = req.body;
+        const file = req.file;
 
-    try {
-      // Upload the image to S3
-      const uploadParams = {
-        Bucket: process.env.AWS_BUCKET_NAME,
-        Key: `products/${Date.now()}-${file.originalname}`, // Unique file name with timestamp
-        Body: file.buffer, // File data
-        ContentType: file.mimetype, // Set file content type
-        ACL: 'public-read', // Set file ACL
-      };
+        if (!file) {
+            return sendError(res, 'Image is required. Please upload an image.', 400);
+        }
 
-      // Use the AWS SDK v3 Upload API for handling uploads
-      const upload = new Upload({
-        client: s3Client,
-        params: uploadParams,
-        queueSize: 4, // Number of files to upload concurrently (can be adjusted)
-        partSize: 5 * 1024 * 1024, // 5MB chunk size for multipart uploads
-      });
+        try {
+            // Upload the image to S3
+            const uploadParams = {
+                Bucket: process.env.AWS_BUCKET_NAME,
+                Key: `products/${Date.now()}-${file.originalname}`,
+                Body: file.buffer,
+                ContentType: file.mimetype,
+                ACL: 'public-read',
+            };
 
-      // Perform the upload and get the file URL
-      const { Location } = await upload.done(); // Location is the S3 URL of the uploaded file
+            const upload = new Upload({
+                client: s3Client,
+                params: uploadParams,
+                queueSize: 4,
+                partSize: 5 * 1024 * 1024,
+            });
 
-      const newProduct = new Product({
-        title, 
-        category, 
-        price, 
-        originalPrice, 
-        discount, 
-        rating, 
-        image: Location, // Save the S3 URL of the image
-        stocks
-      });
+            const { Location } = await upload.done(); // Uploaded image URL
 
-      await newProduct.save();
-      sendSuccess(res, 'Product created successfully', { product: newProduct }, 201);
-    } catch (error) {
-      console.error(error);
-      sendError(res, 'There was an issue creating the product. Please try again later.', 500);
+            const newProduct = new Product({
+                title,
+                category,
+                price,
+                originalPrice,
+                discount,
+                rating,
+                image: Location,
+                stocks,
+            });
+
+            await newProduct.save();
+            sendSuccess(res, 'Product created successfully', { product: newProduct }, 201);
+        } catch (error) {
+            console.error(error);
+            sendError(res, 'There was an issue creating the product. Please try again later.', 500);
+        }
     }
-  });
+);
+
 
 // Update a product route (Admin only)
 router.put('/:id',

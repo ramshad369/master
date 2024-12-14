@@ -35,10 +35,6 @@ export const createProductSchema = Joi.object({
         'number.min': 'Rating must be at least 0',
         'number.max': 'Rating cannot exceed 5',
     }),
-    image: Joi.string().uri().required().messages({
-        'string.uri': 'Image must be a valid URL',
-        'any.required': 'Image is required',
-    }),
     stocks: Joi.number().min(0).required().default(0).messages({
         'number.base': 'Stocks must be a number',
         'number.min': 'Stocks cannot be negative',
@@ -75,9 +71,6 @@ export const updateProductSchema = Joi.object({
         'number.base': 'Rating must be a number',
         'number.min': 'Rating must be at least 0',
         'number.max': 'Rating cannot exceed 5',
-    }),
-    image: Joi.string().uri().optional().messages({
-        'string.uri': 'Image must be a valid URL',
     }),
     stocks: Joi.number().min(0).optional().messages({
         'number.base': 'Stocks must be a number',
