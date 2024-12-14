@@ -284,4 +284,59 @@ router.put('/profile', authenticateToken, validateRequest(updateProfileSchema), 
     }
 });
 
+// Resend OTP
+router.post('/resend-otp', async (req, res) => {
+    const { userId } = req.body;
+
+    try {
+        // Find the user by ID
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return sendError(res, 'User not found', 404);
+        }
+
+        // Generate a new OTP and set expiration time
+        const otp = generateOTP(); // e.g., a 6-digit OTP
+        const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
+
+        user.otp = otp;
+        user.otpExpiry = otpExpiry;
+        await user.save();
+
+        // Variables to track SMS and Email status
+        let smsStatus = false;
+        let emailStatus = false;
+
+        // Send OTP via SMS
+        if (user.phone) {
+            try {
+                await sendSMS(`${user.countryCode}${user.phone}`, `Your OTP is: ${otp}`);
+                smsStatus = true; // SMS sent successfully
+            } catch (smsError) {
+                console.error('Failed to send SMS:', smsError.message);
+            }
+        }
+
+        // Send OTP via Email
+        if (user.email) {
+            try {
+                await sendEmail(user.email, 'Resend OTP', `Your OTP is: ${otp}`);
+                emailStatus = true; // Email sent successfully
+            } catch (emailError) {
+                console.error('Failed to send Email:', emailError.message);
+            }
+        }
+
+        // Check if at least one method of communication succeeded
+        if (!smsStatus && !emailStatus) {
+            return sendError(res, 'Failed to resend OTP via SMS or Email', 500);
+        }
+
+        sendSuccess(res, 'OTP resent successfully. Please check your phone or email.', {otpExpiry:user.otpExpiry}, 200);
+    } catch (error) {
+        sendError(res, error.message, 500);
+    }
+});
+
 export default router;
