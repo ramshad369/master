@@ -136,20 +136,20 @@ router.put('/:id',
 
 router.get('/', async (req, res) => {
     try {
-        // Destructure query parameters from the request
-        const { title, category } = req.query;
+        // Destructure the search query parameter
+        const { search } = req.query;
 
-        // Build the query object
+        // Build the query object for searching in both title and category
         let query = {};
 
-        // If a title is provided in the query, add it to the query filter (case-insensitive)
-        if (title) {
-            query.title = { $regex: title, $options: 'i' }; // 'i' makes the search case-insensitive
-        }
-
-        // If a category is provided in the query, add it to the query filter
-        if (category) {
-            query.category = { $regex: category, $options: 'i' }; // 'i' makes the search case-insensitive
+        // If a search term is provided, apply regex search on both title and category (case-insensitive)
+        if (search) {
+            query = {
+                $or: [
+                    { title: { $regex: search, $options: 'i' } },  // Search for the term in the title
+                    { category: { $regex: search, $options: 'i' } } // Search for the term in the category
+                ]
+            };
         }
 
         // Fetch products based on the query
