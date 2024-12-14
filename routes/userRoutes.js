@@ -28,7 +28,7 @@ router.post('/signup', validateRequest(userSignupSchema), async (req, res) => {
 
         // Generate OTP and set expiration time
         const otp = generateOTP(); // e.g., a 6-digit OTP
-        const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
+        const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 10 minutes from now
 
         // Create a new user
         const newUser = new User({
@@ -120,7 +120,7 @@ router.post('/forgot-password', async (req, res) => {
 
         // Generate OTP and set expiration
         const otp = generateOTP();
-        const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+        const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 10 minutes
 
         user.otp = otp;
         user.otpExpiry = otpExpiry;
@@ -163,7 +163,7 @@ router.post('/reset-password', async (req, res) => {
         const user = await User.findOne({ phone, countryCode });
 
         if (!user) {
-            return sendError(res, 'User not found. Please check the phone number and country code.', 404);
+            return sendError(res, 'User not found. Please check the phone number and country code.', 400);
         }
 
         // Validate OTP
@@ -207,7 +207,7 @@ router.post('/login', validateRequest(loginSchema), async (req, res) => {
         }
 
         const token = sign({ id: user._id, username: user.username, role: user.role }, process.env.JWT_SECRET, {
-            expiresIn: '1h',
+            expiresIn: '24h',
         });
 
         sendSuccess(res, 'Login successful', { token , role: user.role });

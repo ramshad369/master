@@ -2,7 +2,6 @@
 
 import Joi from 'joi';
 
-// Validation schema for creating a product
 export const createProductSchema = Joi.object({
     title: Joi.string().min(3).max(100).required().messages({
         'string.base': 'Title must be a string',
@@ -40,9 +39,15 @@ export const createProductSchema = Joi.object({
         'number.min': 'Stocks cannot be negative',
         'any.required': 'Stocks is required',
     }),
+    description: Joi.string().min(10).max(1000).required().messages({ // New validation rule
+        'string.base': 'Description must be a string',
+        'string.min': 'Description must be at least 10 characters long',
+        'string.max': 'Description cannot exceed 1000 characters',
+        'any.required': 'Description is required',
+    }),
 });
 
-// Validation schema for updating a product
+
 export const updateProductSchema = Joi.object({
     title: Joi.string().min(3).max(100).optional().messages({
         'string.base': 'Title must be a string',
@@ -76,7 +81,13 @@ export const updateProductSchema = Joi.object({
         'number.base': 'Stocks must be a number',
         'number.min': 'Stocks cannot be negative',
     }),
+    description: Joi.string().min(10).max(1000).optional().messages({ // Allow optional description
+        'string.base': 'Description must be a string',
+        'string.min': 'Description must be at least 10 characters long',
+        'string.max': 'Description cannot exceed 1000 characters',
+    }),
 });
+
 
 // Validation schema for deleting a product
 export const deleteProductSchema = Joi.object({
