@@ -136,24 +136,48 @@ router.put('/:id',
 
 router.get('/', async (req, res) => {
     try {
-        // Destructure the search query parameter
-        const { search } = req.query;
+        // Destructure query parameters from the request
+        const { search, category, minPrice, maxPrice, sort } = req.query;
 
-        // Build the query object for searching in both title and category
+        // Build the query object
         let query = {};
 
-        // If a search term is provided, apply regex search on both title and category (case-insensitive)
+        // If a search term is provided, search in both title and category (case-insensitive)
         if (search) {
-            query = {
-                $or: [
-                    { title: { $regex: search, $options: 'i' } },  // Search for the term in the title
-                    { category: { $regex: search, $options: 'i' } } // Search for the term in the category
-                ]
-            };
+            query.$or = [
+                { title: { $regex: search, $options: 'i' } },
+                { category: { $regex: search, $options: 'i' } }
+            ];
         }
 
-        // Fetch products based on the query
-        const products = await Product.find(query);
+        // If category filter is provided, filter by category
+        if (category) {
+            query.category = { $regex: category, $options: 'i' };
+        }
+
+        // If price range is provided, filter by price range
+        if (minPrice || maxPrice) {
+            query.price = {};
+            if (minPrice) query.price.$gte = minPrice;
+            if (maxPrice) query.price.$lte = maxPrice;
+        }
+
+        // Sorting logic
+        let sortCriteria = {};
+
+        // If sort parameter is provided, sort based on the value
+        if (sort) {
+            if (sort === 'price-low-high') {
+                sortCriteria.price = 1; // Low to high (ascending)
+            } else if (sort === 'price-high-low') {
+                sortCriteria.price = -1; // High to low (descending)
+            } else if (sort === 'newest') {
+                sortCriteria.createdAt = -1; // Newest first (descending)
+            }
+        }
+
+        // Fetch products based on the query and sorting criteria
+        const products = await Product.find(query).sort(sortCriteria);
 
         // Ensure that the image field has the full URL or path
         const productsWithImageUrl = products.map(product => ({
@@ -166,6 +190,7 @@ router.get('/', async (req, res) => {
         sendError(res, error.message, 500);
     }
 });
+
 
 
 // Get a single product by ID (No auth needed)
