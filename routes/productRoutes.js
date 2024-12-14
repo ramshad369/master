@@ -2,38 +2,29 @@ import { Router } from 'express';
 import Product from '../models/Product.js';
 import { sendSuccess, sendError } from '../utils/responseHandler.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
-const { authenticateToken, authorizeRole } = authMiddleware;
-import { validateRequest } from '../middlewares/validator.js'; // Assuming a middleware that validates based on Joi schemas
-import { createProductSchema, updateProductSchema, deleteProductSchema } from '../validator/productValidator.js'; // Assuming you have these schemas
-
-const router = Router();
-
 import multer from 'multer';
 import path from 'path';
+import { S3Client } from '@aws-sdk/client-s3'; // AWS SDK v3 import
+import { Upload } from '@aws-sdk/lib-storage'; // AWS SDK v3 lib-storage import
+import { createProductSchema, updateProductSchema, deleteProductSchema } from '../validator/productValidator.js';
+import { validateRequest } from '../middlewares/validator.js';
 
-// Configure multer storage options
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'uploads/'); // Specify the folder where the files will be saved
-    },
-    filename: (req, file, cb) => {
-        cb(null, Date.now() + path.extname(file.originalname)); // Using current timestamp for unique filename
-    }
+const router = Router();
+const { authenticateToken, authorizeRole } = authMiddleware;
+
+// Configure AWS S3 client with SDK v3
+const s3Client = new S3Client({
+  region: process.env.AWS_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  },
 });
 
-// Filter for allowed image file types
-const fileFilter = (req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/jpg'];
-    if (allowedTypes.includes(file.mimetype)) {
-        cb(null, true); // Accept the file
-    } else {
-        cb(new Error('Invalid file type. Only JPEG, PNG, and GIF files are allowed'), false);
-    }
-};
+// Configure multer storage
+const storage = multer.memoryStorage(); // Store files in memory temporarily
 
-// Initialize multer with storage options and file filter
-const upload = multer({ storage, fileFilter });
-
+const upload = multer({ storage });
 
 // Create a new product route (Admin only)
 router.post('/', 
@@ -43,76 +34,115 @@ router.post('/',
   validateRequest(createProductSchema), // Validating the request body for product creation
   async (req, res) => {
     const { title, category, price, originalPrice, discount, rating, stocks } = req.body;
-    let imageUrl = req.file ? `/uploads/${req.file.filename}` : null; // Store the image URL or path
+    const file = req.file;
 
     try {
-        const newProduct = new Product({
-            title, 
-            category, 
-            price, 
-            originalPrice, 
-            discount, 
-            rating, 
-            image: imageUrl,
-            stocks 
-        });
+      // Upload the image to S3
+      const uploadParams = {
+        Bucket: process.env.AWS_BUCKET_NAME,
+        Key: `products/${Date.now()}-${file.originalname}`, // Unique file name with timestamp
+        Body: file.buffer, // File data
+        ContentType: file.mimetype, // Set file content type
+        ACL: 'public-read', // Set file ACL
+      };
 
-        await newProduct.save();
-        sendSuccess(res, 'Product created successfully', { product: newProduct }, 201);
+      // Use the AWS SDK v3 Upload API for handling uploads
+      const upload = new Upload({
+        client: s3Client,
+        params: uploadParams,
+        queueSize: 4, // Number of files to upload concurrently (can be adjusted)
+        partSize: 5 * 1024 * 1024, // 5MB chunk size for multipart uploads
+      });
+
+      // Perform the upload and get the file URL
+      const { Location } = await upload.done(); // Location is the S3 URL of the uploaded file
+
+      const newProduct = new Product({
+        title, 
+        category, 
+        price, 
+        originalPrice, 
+        discount, 
+        rating, 
+        image: Location, // Save the S3 URL of the image
+        stocks
+      });
+
+      await newProduct.save();
+      sendSuccess(res, 'Product created successfully', { product: newProduct }, 201);
     } catch (error) {
-        sendError(res, error.message, 500, error.message);
+      console.error(error);
+      sendError(res, 'There was an issue creating the product. Please try again later.', 500);
     }
-});
+  });
 
 // Update a product route (Admin only)
 router.put('/:id',
-    authenticateToken, 
-    authorizeRole('admin'), 
-    upload.single('image'), // Handle image upload (if provided)
-    validateRequest(updateProductSchema), // Validating the request body for product update
-    async (req, res) => {
-      const { id } = req.params;
-      const { title, category, price, originalPrice, discount, rating, stocks } = req.body;
-      
-      // Handle the uploaded image if any
-      let imageUrl = req.file ? `/uploads/${req.file.filename}` : undefined; // If a new image is uploaded, save the new image URL
-  
-      try {
-          // Retrieve the existing product from the database
-          const existingProduct = await Product.findById(id);
-  
-          if (!existingProduct) {
-              return sendError(res, 'Product not found', 404);
-          }
-  
-          // If no new image is uploaded, keep the existing image URL
-          if (!imageUrl) {
-              imageUrl = existingProduct.image;
-          }
-  
-          // Update the product with the new details (and image if provided)
-          const updatedProduct = await Product.findByIdAndUpdate(
-              id, 
-              {
-                  title, 
-                  category, 
-                  price, 
-                  originalPrice, 
-                  discount, 
-                  rating, 
-                  image: imageUrl,
-                  stocks: stocks !== undefined ? stocks : existingProduct.stocks
-              }, 
-              { new: true } // Return the updated product
-          );
-  
-          sendSuccess(res, 'Product updated successfully', { product: updatedProduct }, 200);
-      } catch (error) {
-          sendError(res, error.message, 500, error.message);
+  authenticateToken, 
+  authorizeRole('admin'), 
+  upload.single('image'), // Handle image upload (if provided)
+  validateRequest(updateProductSchema), // Validating the request body for product update
+  async (req, res) => {
+    const { id } = req.params;
+    const { title, category, price, originalPrice, discount, rating, stocks } = req.body;
+    const file = req.file;
+
+    try {
+      // Retrieve the existing product from the database
+      const existingProduct = await Product.findById(id);
+
+      if (!existingProduct) {
+        return sendError(res, 'Product not found. Please check the product ID or try again later.', 404);
       }
+
+      let imageUrl = existingProduct.image;
+
+      // If a new image is uploaded, upload it to S3 and update the image URL
+      if (file) {
+        const uploadParams = {
+          Bucket: process.env.AWS_BUCKET_NAME,
+          Key: `products/${Date.now()}-${file.originalname}`,
+          Body: file.buffer,
+          ContentType: file.mimetype,
+          ACL: 'public-read',
+        };
+
+        const upload = new Upload({
+          client: s3Client,
+          params: uploadParams,
+          queueSize: 4,
+          partSize: 5 * 1024 * 1024,
+        });
+
+        const { Location } = await upload.done(); // S3 URL of the uploaded image
+        imageUrl = Location;
+      }
+
+      // Update the product with the new details (and image if provided)
+      const updatedProduct = await Product.findByIdAndUpdate(
+        id, 
+        {
+          title, 
+          category, 
+          price, 
+          originalPrice, 
+          discount, 
+          rating, 
+          image: imageUrl,
+          stocks: stocks !== undefined ? stocks : existingProduct.stocks
+        }, 
+        { new: true }
+      );
+
+      sendSuccess(res, 'Product updated successfully', { product: updatedProduct }, 200);
+    } catch (error) {
+      console.error(error);
+      sendError(res, 'There was an issue updating the product. Please try again later.', 500);
+    }
   });
 
-  router.delete('/:id', 
+// Delete a product route (Admin only)
+router.delete('/:id', 
     authenticateToken, 
     authorizeRole('admin'), 
     async (req, res) => {
@@ -123,17 +153,18 @@ router.put('/:id',
             const deletedProduct = await Product.findByIdAndDelete(id);
             
             if (!deletedProduct) {
-                return sendError(res, 'Product not found', 404);
+                return sendError(res, 'Product not found. Please check the product ID or try again later.', 404);
             }
 
             // Send success response
-            sendSuccess(res, 'Product deleted successfully', deletedProduct, 200);
+            sendSuccess(res, 'Product deleted successfully', { product: deletedProduct }, 200);
         } catch (error) {
-            sendError(res, error.message, 500, error.message);
+            sendError(res, 'There was an issue deleting the product. Please try again later.', 500);
         }
     }
 );
 
+// Fetch all products (with optional filters for title and category)
 router.get('/', async (req, res) => {
     try {
         // Destructure query parameters from the request
@@ -182,16 +213,14 @@ router.get('/', async (req, res) => {
         // Ensure that the image field has the full URL or path
         const productsWithImageUrl = products.map(product => ({
             ...product.toObject(),
-            image: product.image ? `/uploads/${product.image}` : null, // Ensure the image field is a full URL or path
+            image: product.image ? product.image : null, // The image URL is stored directly from S3
         }));
 
         sendSuccess(res, 'Products fetched successfully', productsWithImageUrl, 200);
     } catch (error) {
-        sendError(res, error.message, 500);
+        sendError(res, 'There was an issue fetching the products. Please try again later.', 500);
     }
 });
-
-
 
 // Get a single product by ID (No auth needed)
 router.get('/:id', async (req, res) => {
@@ -202,18 +231,18 @@ router.get('/:id', async (req, res) => {
         const product = await Product.findById(id);
 
         if (!product) {
-            return sendError(res, 'Product not found', 404);
+            return sendError(res, 'Product not found. Please check the product ID or try again later.', 404);
         }
 
         // Ensure that the image field has the full URL or path
         const productWithImageUrl = {
             ...product.toObject(),
-            image: product.image ? `/uploads/${product.image}` : null, // Ensure the image field is a full URL or path
+            image: product.image ? product.image : null, // The image URL is stored directly from S3
         };
 
         sendSuccess(res, 'Product fetched successfully', productWithImageUrl, 200);
     } catch (error) {
-        sendError(res, error.message, 500);
+        sendError(res, 'There was an issue fetching the product. Please try again later.', 500);
     }
 });
 
