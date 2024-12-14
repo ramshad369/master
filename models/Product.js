@@ -4,10 +4,10 @@ const productSchema = new Schema({
     title: { type: String, required: true },           
     category: { type: String, required: true },        
     price: { type: Number, required: true },           
-    originalPrice: { type: Number, required: true },   
+    originalPrice: { type: Number},   
     discount: { type: Number },                       
     rating: { type: Number },          
-    image: { type: String },
+    image: { type: String, required:true },
     stocks: { type: Number, required: true, default: 0 }                           
 }, { timestamps: true });
 
