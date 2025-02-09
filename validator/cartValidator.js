@@ -12,12 +12,8 @@ export const addToCartSchema = Joi.object({
         'any.required': 'Product ID is required',
         'string.base': 'Product ID must be a valid ObjectId',
     }),
-    color: Joi.string().optional().messages({
-        'string.base': 'Color must be a string',
-    }),
-    size: Joi.string().optional().messages({
-        'string.base': 'Size must be a string',
-    }),
+    color: Joi.string().optional(),
+    size: Joi.string().optional(),
 });
 
 /**
