@@ -15,7 +15,7 @@ const { authenticateToken } = authMiddleware;
  * @access Private (Authenticated Users)
  */
 router.post('/', authenticateToken, validateRequest(addToCartSchema), async (req, res) => {
-    const { productId, color, size  } = req.body;
+    const { productId, color, size } = req.body;
 
     try {
         const product = await Product.findById(productId);
