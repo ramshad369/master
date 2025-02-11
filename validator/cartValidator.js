@@ -23,16 +23,7 @@ export const updateCartSchema = Joi.object({
     cartItemId: JoiObjectIdExtension().required().messages({
         'any.required': 'cart item ID is required',
         'string.base': 'cart item ID must be a valid ObjectId',
-    }),
-    color: Joi.string().optional().messages({
-        'string.base': 'Color must be a string',
-    }),
-    quantity: Joi.string().optional().messages({
-        'string.base': 'quantity must be a string',
-    }),
-    size: Joi.string().optional().messages({
-        'string.base': 'Size must be a string',
-    }),
+    })
 });
 
 /**

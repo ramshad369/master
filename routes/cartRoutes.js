@@ -18,31 +18,47 @@ router.post('/', authenticateToken, validateRequest(addToCartSchema), async (req
     const { productId, color, size } = req.body;
 
     try {
+        // Check if the product exists
         const product = await Product.findById(productId);
         if (!product) return sendError(res, 'Product not found.', 400);
 
+        // Find the user's cart
         let cart = await Cart.findOne({ userId: req.user.id });
 
         if (!cart) {
+            // Create a new cart if it doesn't exist
             cart = new Cart({
                 userId: req.user.id,
-                items: [{ productId,quantity: 1, color, size  }],
+                items: [{ productId, quantity: 1, color, size }],
             });
         } else {
-            const existingItem = cart.items.find(item => item.productId.toString() === productId);
-            
-            if (!existingItem) {
-                cart.items.push({ productId, quantity: 1, color, size  });
+            // Check if the same product with the same color and size exists
+            const existingItem = cart.items.find(
+                (item) => 
+                    item.productId.toString() === productId &&
+                    item.color === color &&
+                    item.size === size
+            );
+
+            if (existingItem) {
+                // Increase quantity if item exists
+                existingItem.quantity += 1;
+            } else {
+                // Add new item if no match is found
+                cart.items.push({ productId, quantity: 1, color, size });
             }
         }
 
+        // Save the updated cart
         await cart.save();
+
         sendSuccess(res, 'Product added to cart', { cart }, 201);
     } catch (error) {
         console.error(error);
         sendError(res, 'Error adding product to cart.', 500);
     }
 });
+
 
 /**
  * @route PUT /cart/update/:cartItemId
