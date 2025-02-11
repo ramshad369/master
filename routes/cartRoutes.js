@@ -67,7 +67,7 @@ router.post('/', authenticateToken, validateRequest(addToCartSchema), async (req
  */
 router.put('/:cartItemId', authenticateToken, validateRequest(updateCartSchema), async (req, res) => {
     const { cartItemId } = req.params;
-    const { color, size } = req.body;
+    const { color, size, quantity } = req.body;
 
     try {
         const cart = await Cart.findOne({ userId: req.user.id });
