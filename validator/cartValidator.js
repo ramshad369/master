@@ -23,7 +23,10 @@ export const updateCartSchema = Joi.object({
     cartItemId: JoiObjectIdExtension().required().messages({
         'any.required': 'cart item ID is required',
         'string.base': 'cart item ID must be a valid ObjectId',
-    })
+    }),
+    color: Joi.string().allow(""),
+    size: Joi.string().allow(""),
+    quantity: Joi.string().allow("")
 });
 
 /**

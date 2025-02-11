@@ -76,9 +76,9 @@ router.put('/:cartItemId', authenticateToken, validateRequest(updateCartSchema),
         const item = cart.items.find(item => item._id.toString() === cartItemId);
         if (!item) return sendError(res, 'Cart item not found.', 404);
 
-        if (color !== undefined) item.color = color;
-        if (size !== undefined) item.size = size;
-        if (quantity !== undefined) item.quantity = quantity;
+        if (color !== "") item.color = color;
+        if (size !== "") item.size = size;
+        if (quantity !== "") item.quantity += 1;
 
         await cart.save();
         sendSuccess(res, 'Cart updated successfully', { cart }, 200);
@@ -94,14 +94,16 @@ router.put('/:cartItemId', authenticateToken, validateRequest(updateCartSchema),
  * @desc Remove a product from the cart
  * @access Private (Authenticated Users)
  */
-router.delete('/remove/:productId', authenticateToken, async (req, res) => {
-    const { productId } = req.params;
-
+router.delete('/remove/:cartItemId', authenticateToken, async (req, res) => {
+    const { cartItemId } = req.params;
+      
     try {
         const cart = await Cart.findOne({ userId: req.user.id });
         if (!cart) return sendError(res, 'Cart not found.', 404);
+        if (cart.items.length<=0) return sendError(res, 'Cart is empty.', 404);
+        
 
-        cart.items = cart.items.filter(item => item.productId.toString() !== productId);
+        cart.items = cart.items.filter(item => item._id.toString() !== cartItemId);
         await cart.save();
 
         sendSuccess(res, 'Product removed from cart', { cart }, 200);
