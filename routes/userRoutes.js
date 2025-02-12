@@ -40,7 +40,7 @@ router.post('/signup', validateRequest(userSignupSchema), async (req, res) => {
             ...(email && { email }),
             ...(firstName && { firstName }),
             ...(lastName && { lastName }),
-            ...(address && { address }),
+            ...(address && Array.isArray(address) ? { address } : { address: [address] }),
         });
 
         await newUser.save();
@@ -236,7 +236,7 @@ router.get('/profile/:id', authenticateToken, async (req, res) => {
 router.put('/profile', authenticateToken, validateRequest(updateProfileSchema), async (req, res) => {
     const { address, email, firstName, lastName, userId } = req.body;
     let update = {};
-    if (address) update.address = address;
+    if (address) update.address = Array.isArray(address) ? address : [address];
     if (email) update.email = email;
     if (firstName) update.firstName = firstName;
     if (lastName) update.lastName = lastName;
@@ -305,5 +305,52 @@ router.post('/resend-otp', async (req, res) => {
         sendError(res, 'An error occurred while resending OTP. Please try again later.', 500);
     }
 });
+
+// Add Address
+router.post('/profile/address', authenticateToken, async (req, res) => {
+    const { userId, address } = req.body;
+
+    try {
+        const user = await User.findById(userId);
+        if (!user) {
+            return sendError(res, 'User not found.', 404);
+        }
+        user.address.push(address); // Add a single address
+        await user.save();
+        sendSuccess(res, 'Address added successfully', user.address);
+    } catch (error) {
+        console.error('Error adding address:', error);
+        sendError(res, 'An error occurred while adding the address.', 500);
+    }
+});
+
+// Edit Address
+router.put('/profile/address/:index', authenticateToken, async (req, res) => {
+    const { userId, address } = req.body;
+    const { index } = req.params;
+
+    try {
+        const user = await User.findById(userId);
+        if (!user) {
+            return sendError(res, 'User not found.', 404);
+        }
+
+        if (!address || typeof address !== 'string' || address.length < 5) {
+            return sendError(res, 'Valid address is required (minimum 5 characters).', 400);
+        }
+
+        if (index < 0 || index >= user.address.length) {
+            return sendError(res, 'Invalid address index.', 400);
+        }
+
+        user.address[index] = address;
+        await user.save();
+        sendSuccess(res, 'Address updated successfully', user.address);
+    } catch (error) {
+        console.error('Error updating address:', error);
+        sendError(res, 'An error occurred while updating the address.', 500);
+    }
+});
+
 
 export default router;
