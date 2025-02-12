@@ -306,4 +306,39 @@ router.post('/resend-otp', async (req, res) => {
     }
 });
 
+// Get User Listing (Admin Only)
+router.get('/users', authenticateToken, async (req, res) => {
+    const { search, page = 1, limit = 10 } = req.query;
+
+    try {
+        const query = {};
+
+        if (search) {
+            query.$or = [
+                { firstName: new RegExp(search, 'i') },
+                { lastName: new RegExp(search, 'i') },
+                { email: new RegExp(search, 'i') },
+                { phone: new RegExp(search, 'i') },
+            ];
+        }
+
+        const users = await User.find(query)
+            .select('-password') // Exclude password
+            .skip((page - 1) * limit)
+            .limit(parseInt(limit));
+
+        const totalUsers = await User.countDocuments(query);
+
+        sendSuccess(res, 'Users fetched successfully', {
+            users,
+            totalUsers,
+            totalPages: Math.ceil(totalUsers / limit),
+            currentPage: parseInt(page),
+        });
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        sendError(res, 'An error occurred while fetching users.', 500);
+    }
+});
+
 export default router;

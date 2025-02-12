@@ -78,7 +78,7 @@ router.put('/:cartItemId', authenticateToken, validateRequest(updateCartSchema),
 
         if (color !== "") item.color = color;
         if (size !== "") item.size = size;
-        if (quantity !== "") item.quantity += 1;
+        if (quantity !== "") item.quantity = quantity;
 
         await cart.save();
         sendSuccess(res, 'Cart updated successfully', { cart }, 200);

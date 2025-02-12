@@ -54,6 +54,8 @@ router.post(
       const upload = new Upload({
         client: s3Client,
         params: uploadParams,
+        queueSize: 5, // Increases concurrent uploads
+        partSize: 5 * 1024 * 1024, // 5MB parts for multipart upload
       });
 
       const { Location } = await upload.done();
@@ -113,6 +115,8 @@ router.put(
         const upload = new Upload({
           client: s3Client,
           params: uploadParams,
+          queueSize: 5, // Increases concurrent uploads
+          partSize: 5 * 1024 * 1024, // 5MB parts for multipart upload
         });
 
         const { Location } = await upload.done();
