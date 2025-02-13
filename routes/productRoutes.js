@@ -14,6 +14,8 @@ const { authenticateToken, authorizeRole } = authMiddleware;
 // Configure AWS S3 client
 const s3Client = new S3Client({
   region: process.env.AWS_REGION,
+  endpoint: 'https://s3-accelerate.amazonaws.com', // Correct endpoint
+  forcePathStyle: false, // Ensures proper bucket addressing
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
@@ -43,7 +45,8 @@ router.post(
     }
 
     try {
-      const uploadParams = {
+      const uploadParams = 
+      {
         Bucket: process.env.AWS_BUCKET_NAME,
         Key: `products/${Date.now()}-${file.originalname}`,
         Body: file.buffer,
@@ -67,8 +70,8 @@ router.post(
         originalPrice,
         discount,
         rating,
-        image: Location,
         stocks,
+        image: Location,
         description,
       });
 
