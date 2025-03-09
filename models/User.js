@@ -23,9 +23,9 @@ const userSchema = new Schema({
     password: { type: String, required: true },
     role: { type: String, enum: ['user', 'admin', 'superadmin'], default: 'user' },
     email: { type: String, required: false, unique: true },
-    address: { type: String, required: false },
-    otp: { type: String }, // Store OTP
-    otpExpiry: { type: Date }, // Store OTP expiration time
+    address: [{ type: String, required: false }],
+    otp: { type: String },
+    otpExpiry: { type: Date },
 }, { timestamps: true });
 
 export default model('User', userSchema);

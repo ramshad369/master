@@ -1,8 +1,6 @@
 
 
 import Joi from 'joi';
-import JoiObjectId from 'joi-objectid';
-const JoiObjectIdExtension = JoiObjectId(Joi);
 
 export const createProductSchema = Joi.object({
     title: Joi.string().min(3).max(100).required().messages({
@@ -51,10 +49,6 @@ export const createProductSchema = Joi.object({
 
 
 export const updateProductSchema = Joi.object({
-    id: JoiObjectIdExtension().required().messages({
-        'any.required': 'product ID is required',
-        'string.base': 'product item ID must be a valid ObjectId',
-    }),
     title: Joi.string().min(3).max(100).optional().messages({
         'string.base': 'Title must be a string',
         'string.min': 'Title must be at least 3 characters long',

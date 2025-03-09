@@ -1,10 +1,8 @@
 import Joi from 'joi';
 import JoiObjectId from 'joi-objectid';
 
-// Initialize the JoiObjectId extension properly by passing Joi as an argument
 const JoiObjectIdExtension = JoiObjectId(Joi);
-// Validation schema for sign-up
-// Validation schema for sign-up
+
 export const userSignupSchema = Joi.object({
     countryCode: Joi.string()
         .pattern(/^\+\d{1,3}$/)
@@ -29,7 +27,7 @@ export const userSignupSchema = Joi.object({
     firstName: Joi.string().min(2).max(30).required(),
     lastName: Joi.string().min(2).max(30).optional(),
     email: Joi.string().email().optional(),
-    address: Joi.string().min(5).optional(),
+    address: Joi.array().items(Joi.string()).optional()
 });
 
 export const forgotPasswordSchema = Joi.object({
@@ -92,9 +90,7 @@ export const updateProfileSchema = Joi.object({
      userId: JoiObjectIdExtension().optional().messages({
         'string.base': 'User ID must be a valid ObjectId',
     }),
-    address: Joi.string().min(5).optional().messages({
-        'string.min': 'Address must be at least 5 characters long',
-    }),
+    address: Joi.array().items(Joi.string()).optional(),
     email: Joi.string().email().optional().messages({
         'string.email': 'Invalid email format',
     }),
