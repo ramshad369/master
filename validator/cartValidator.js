@@ -26,7 +26,7 @@ export const updateCartSchema = Joi.object({
     }),
     color: Joi.string().allow(""),
     size: Joi.string().allow(""),
-    quantity: Joi.string().allow("")
+    quantity: Joi.number().allow("")
 });
 
 /**

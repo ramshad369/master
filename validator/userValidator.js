@@ -27,7 +27,41 @@ export const userSignupSchema = Joi.object({
     firstName: Joi.string().min(2).max(30).required(),
     lastName: Joi.string().min(2).max(30).optional(),
     email: Joi.string().email().optional(),
-    address: Joi.array().items(Joi.string()).optional()
+  // Updated address validation in userSignupSchema and updateProfileSchema
+address: Joi.array()
+.items(
+    Joi.object({
+        name: Joi.string().required().messages({
+            'any.required': 'Name is required',
+        }),
+        address1: Joi.string().required().messages({
+            'any.required': 'Address line 1 is required',
+        }),
+        address2: Joi.string().optional(),
+        city: Joi.string().required().messages({
+            'any.required': 'City is required',
+        }),
+        state: Joi.string().required().messages({
+            'any.required': 'State is required',
+        }),
+        zipCode: Joi.string().pattern(/^\d{5,10}$/).required().messages({
+            'string.pattern.base': 'Zip code must be between 5 to 10 digits',
+            'any.required': 'Zip code is required',
+        }),
+        country: Joi.string().required().messages({
+            'any.required': 'Country is required',
+        }),
+        countryCode: Joi.string().pattern(/^\+\d{1,3}$/).required().messages({
+            'string.pattern.base': 'Country code must be in the format "+XXX" (e.g., "+1")',
+            'any.required': 'Country code is required',
+        }),
+        phone: Joi.string().pattern(/^\d{7,10}$/).required().messages({
+            'string.pattern.base': 'Phone number must contain 7 to 10 digits',
+            'any.required': 'Phone number is required',
+        }),
+    })
+)
+.optional(),
 });
 
 export const forgotPasswordSchema = Joi.object({
@@ -89,8 +123,41 @@ export const cartSchema = Joi.object({
 export const updateProfileSchema = Joi.object({
      userId: JoiObjectIdExtension().optional().messages({
         'string.base': 'User ID must be a valid ObjectId',
-    }),
-    address: Joi.array().items(Joi.string()).optional(),
+     }),// Updated address validation in userSignupSchema and updateProfileSchema
+     address: Joi.array()
+         .items(
+             Joi.object({
+                 name: Joi.string().required().messages({
+                     'any.required': 'Name is required',
+                 }),
+                 address1: Joi.string().required().messages({
+                     'any.required': 'Address line 1 is required',
+                 }),
+                 address2: Joi.string().optional(),
+                 city: Joi.string().required().messages({
+                     'any.required': 'City is required',
+                 }),
+                 state: Joi.string().required().messages({
+                     'any.required': 'State is required',
+                 }),
+                 zipCode: Joi.string().pattern(/^\d{5,10}$/).required().messages({
+                     'string.pattern.base': 'Zip code must be between 5 to 10 digits',
+                     'any.required': 'Zip code is required',
+                 }),
+                 country: Joi.string().required().messages({
+                     'any.required': 'Country is required',
+                 }),
+                 countryCode: Joi.string().pattern(/^\+\d{1,3}$/).required().messages({
+                     'string.pattern.base': 'Country code must be in the format "+XXX" (e.g., "+1")',
+                     'any.required': 'Country code is required',
+                 }),
+                 phone: Joi.string().pattern(/^\d{7,10}$/).required().messages({
+                     'string.pattern.base': 'Phone number must contain 7 to 10 digits',
+                     'any.required': 'Phone number is required',
+                 }),
+             })
+         )
+         .optional(),     
     email: Joi.string().email().optional().messages({
         'string.email': 'Invalid email format',
     }),
