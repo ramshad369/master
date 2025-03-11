@@ -22,7 +22,8 @@ const addressSchema = new Schema({
             validator: (v) => /^\d{7,10}$/.test(v),
             message: 'Phone number must contain 7 to 10 digits',
         },
-    }
+    },
+    isDefault:{ type: Boolean, default:false}
 });
 const userSchema = new Schema({
     countryCode: { 
@@ -49,7 +50,7 @@ const userSchema = new Schema({
     email: { type: String, required: false, unique: true },
     address: { type: [addressSchema], default: [] },
     otp: { type: String },
-    otpExpiry: { type: Date },
+    otpExpiry: { type: Date }
 }, { timestamps: true });
 
 export default model('User', userSchema);

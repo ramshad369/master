@@ -326,6 +326,24 @@ router.get("/profile/:id", authenticateToken, async (req, res) => {
   }
 });
 
+router.get("/profile", authenticateToken, async (req, res) => {
+    try {
+      const user = await User.findById(req.user.id).select("-password"); // Exclude password
+      if (!user) {
+        return sendError(res, "User not found.", 404);
+      }
+  
+      sendSuccess(res, "User profile fetched successfully", user);
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+      sendError(
+        res,
+        "An error occurred while fetching user profile. Please try again later.",
+        500
+      );
+    }
+  });
+
 // Update Profile Route
 router.put(
   "/profile",
@@ -483,7 +501,7 @@ router.post("/profile/address", authenticateToken, async (req, res) => {
     const { userId, address } = req.body;
   
     try {
-      const user = await User.findById(userId);
+      const user = await User.findById(req.user.id);
       if (!user) return sendError(res, "User not found.", 404);
   
       if (!address || !address.address1 || !address.city || !address.state || !address.zipCode || !address.country || !address.phone) {
@@ -506,7 +524,7 @@ router.post("/profile/address", authenticateToken, async (req, res) => {
     const { addressId } = req.params;
   
     try {
-      const user = await User.findById(userId);
+      const user = await User.findById(req.user.id);
       if (!user) return sendError(res, "User not found.", 404);
   
       const addressIndex = user.address.findIndex(addr => addr._id.toString() === addressId);
@@ -524,16 +542,14 @@ router.post("/profile/address", authenticateToken, async (req, res) => {
   
   // Delete Address
   router.delete("/profile/address/:addressId", authenticateToken, async (req, res) => {
-    const { userId } = req.body;
     const { addressId } = req.params;
   
     try {
-      const user = await User.findById(userId);
+      const user = await User.findById(req.user.id);
       if (!user) return sendError(res, "User not found.", 404);
   
       user.address = user.address.filter(addr => addr._id.toString() !== addressId);
       await user.save();
-  
       sendSuccess(res, "Address deleted successfully.", user.address);
     } catch (error) {
       console.error("Error deleting address:", error);
@@ -543,23 +559,18 @@ router.post("/profile/address", authenticateToken, async (req, res) => {
   
   // Set Default Address
   router.put("/profile/address/:addressId/default", authenticateToken, async (req, res) => {
-    const { userId } = req.body;
     const { addressId } = req.params;
   
     try {
-      const user = await User.findById(userId);
+      const user = await User.findById(req.user.id);
       if (!user) return sendError(res, "User not found.", 404);
   
       const addressIndex = user.address.findIndex(addr => addr._id.toString() === addressId);
       if (addressIndex === -1) return sendError(res, "Address not found.", 404);
   
-      // Set all addresses to non-default
       user.address.forEach(addr => (addr.isDefault = false));
-  
-      // Set the selected address as default
       user.address[addressIndex].isDefault = true;
       await user.save();
-  
       sendSuccess(res, "Default address updated successfully.", user.address);
     } catch (error) {
       console.error("Error setting default address:", error);
