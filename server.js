@@ -8,7 +8,9 @@ import setupRoutes from "./routes/allRoutes.js";
 import Order from "./models/order.js";
 import Stripe from "stripe";
 import User from "./models/User.js";
+import Cart from "./models/Cart.js";
 import {sendEmail } from "./utils/otpHelper.js";
+import { sendSuccess, sendError } from "./utils/responseHandler.js";
 // Load environment variables
 config();
 const stripe = new Stripe(process.env.STRIPE_KEY);
@@ -39,6 +41,8 @@ app.post(
         const paymentMethod = await stripe.paymentMethods.retrieve(
           paymentIntentObj.payment_method
         );
+
+        //update order
         const orderId = paymentIntent.metadata.orderId;
         const order = await Order.findById(orderId);
         order.paymentStatus = "success";
@@ -46,6 +50,14 @@ app.post(
         order.paymentIntentId = paymentIntent.id;
         order.paymentMethod = paymentMethod.type;
         await order.save();
+
+        // clear cart
+        const cart = await Cart.findOne({ userId: paymentIntent.metadata.userId});
+        if (!cart) return sendError(res, 'Cart already empty.', 404);
+        cart.items = [];
+        await cart.save();
+
+        //send mail
         const userDetails = await User.findById(paymentIntent.metadata.userId).select("-password");
         const subject = "Payment Success - Order Placed";
         const text = `Your payment was successful. Your order (ID: ${orderId}) is confirmed.`;

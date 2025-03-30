@@ -11,7 +11,7 @@ import {sendEmail } from "../utils/otpHelper.js";
 
 router.post("/create-checkout-session", authenticateToken, async (req, res) => {
   try {
-    const { cartItems } = req.body;
+    const { cartItems, cartId } = req.body;
     const userId = req.user.id;
     console.log("cartItems", cartItems);
     const currentDate = new Date();
@@ -42,7 +42,7 @@ router.post("/create-checkout-session", authenticateToken, async (req, res) => {
         product_data: {
           name: item.productId.title,
         },
-        unit_amount: item.productId.price,
+        unit_amount: item.productId.price*100,
       },
       quantity: item.quantity,
     }));
@@ -57,12 +57,53 @@ router.post("/create-checkout-session", authenticateToken, async (req, res) => {
       metadata: { orderId: orderId, userId: userId },
       payment_intent_data: {
         // Add payment_intent_data
-        metadata: { orderId: orderId, userId: userId }, // Pass orderId to payment intent
+        metadata: { orderId: orderId, userId: userId, cartId: cartId }, // Pass orderId to payment intent
       },
     });
     res.json({ id: session.id });
   } catch (error) {
     sendError(res, "Error creating order. Please try again.", 500);
+  }
+});
+
+// Route to fetch user's orders with product details
+router.get("/user-orders", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Fetch all orders belonging to the authenticated user
+    const orders = await Order.find({ user: userId })
+      .populate("items.productId") // Populate product details
+      .sort({ createdAt: -1 });    // Sort by most recent orders
+
+    if (orders.length === 0) {
+      return sendError(res, "No orders found.", 404);
+    }
+
+    // Format the response with order details and individual products
+    const formattedOrders = orders.map((order) => ({
+      orderId: order._id,
+      status: order.status,
+      deliveryStatus: order.deliveryStatus,
+      deliveryDate: order.deliveryDate,
+      createdAt: order.createdAt,
+      items: order.items.map((item) => ({
+        productId: item.productId._id,
+        title: item.productId.title,
+        quantity: item.quantity,
+        price: item.productId.price,
+        total: item.productId.price * item.quantity,
+      })),
+      totalAmount: order.items.reduce(
+        (acc, item) => acc + item.productId.price * item.quantity,
+        0
+      ),
+    }));
+
+    sendSuccess(res, "User orders fetched successfully", formattedOrders, 200);
+  } catch (error) {
+    console.error(error);
+    sendError(res, "Error fetching user orders. Please try again.", 500);
   }
 });
 
@@ -90,7 +131,7 @@ router.get("/:id", authenticateToken, async (req, res) => {
       if (item.productId) {
         totalAmount += item.productId.price * item.quantity;
       }
-    });
+      });
 
     sendSuccess(res, "Order fetched successfully", { order, totalAmount }, 200);
   } catch (error) {

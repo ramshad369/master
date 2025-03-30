@@ -3,6 +3,7 @@ import adminRoutes from './adminRoutes.js';
 import productRoutes from './productRoutes.js';
 import cartRoutes from './cartRoutes.js';
 import orderRoutes from './orderRoutes.js';
+import dashboardRoutes from './dashboardRoutes.js';
 
 const setupRoutes = (app) => {
     app.use('/user', userRoutes); 
@@ -10,6 +11,7 @@ const setupRoutes = (app) => {
     app.use('/products', productRoutes);
     app.use('/carts', cartRoutes);
     app.use('/orders', orderRoutes);
+    app.use('/dashboard', dashboardRoutes);
 };
 
 export default setupRoutes;

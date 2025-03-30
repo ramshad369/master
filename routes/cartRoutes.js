@@ -143,7 +143,7 @@ router.get('/', authenticateToken, async (req, res) => {
         const cart = await Cart.findOne({ userId: req.user.id }).populate('items.productId');
 
         if (!cart || cart.items.length === 0) {
-            return sendError(res, 'Your cart is empty.', 404);
+            return sendError(res, 'Your cart is empty.', 200);
         }
 
         // Calculate total amount
