@@ -11,13 +11,17 @@ import {sendEmail } from "../utils/otpHelper.js";
 
 router.post("/create-checkout-session", authenticateToken, async (req, res) => {
   try {
-    const { cartItems, cartId } = req.body;
+    const { cartItems, cartId, address } = req.body;
     const userId = req.user.id;
     console.log("cartItems", cartItems);
     const currentDate = new Date();
     const deliveryDate = new Date(
       currentDate.setDate(currentDate.getDate() + 5)
     );
+    if (!address || !address.address1 || !address.city || !address.state || !address.zipCode || !address.country || !address.phone) {
+      return sendError(res, "Invalid address format. Please provide complete address details.", 400);
+    }
+
     // Create the order without payment details first
     const order = new Order({
       user: userId,
@@ -31,8 +35,9 @@ router.post("/create-checkout-session", authenticateToken, async (req, res) => {
       deliveryStatus: "pending",
       createdAt: new Date(),
       deliveryDate: deliveryDate,
+      address: address
     });
-
+    
     await order.save(); // Save the order in the database
     console.log("Order created without payment details:", order);
 
@@ -62,6 +67,8 @@ router.post("/create-checkout-session", authenticateToken, async (req, res) => {
     });
     res.json({ id: session.id });
   } catch (error) {
+    console.log(error, "sdsdsd");
+    
     sendError(res, "Error creating order. Please try again.", 500);
   }
 });
@@ -87,6 +94,7 @@ router.get("/user-orders", authenticateToken, async (req, res) => {
       deliveryStatus: order.deliveryStatus,
       deliveryDate: order.deliveryDate,
       createdAt: order.createdAt,
+      order: order.address,
       items: order.items.map((item) => ({
         productId: item.productId._id,
         title: item.productId.title,
@@ -169,6 +177,11 @@ router.get("/", authenticateToken, authorizeRole("admin"), async (req, res) => {
       .populate("items.productId") // Populate product details in order items
       .sort({ createdAt: -1 }); // Optional: Sort by createdAt in descending order
 
+          // Calculate the total order amount for each order
+    const ordersWithTotalAmount = orders.map(order => {
+      const totalAmount = order.items.reduce((sum, item) => sum + item.quantity * item.price, 0);
+      return { ...order.toObject(), totalAmount };
+    });
     // Count the total number of orders (for pagination)
     const totalOrders = await Order.countDocuments(filters);
 
@@ -178,7 +191,7 @@ router.get("/", authenticateToken, authorizeRole("admin"), async (req, res) => {
     sendSuccess(
       res,
       "Orders fetched successfully",
-      { orders, totalOrders, totalPages, currentPage: page },
+      { orders: ordersWithTotalAmount, totalOrders, totalPages, currentPage: page },
       200
     );
   } catch (error) {

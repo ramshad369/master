@@ -6,7 +6,6 @@ import {
   userSignupSchema,
   loginSchema,
   updateProfileSchema,
-  cartSchema,
 } from "../validator/userValidator.js";
 import { sendSuccess, sendError } from "../utils/responseHandler.js";
 import { validateRequest } from "../middlewares/validator.js";

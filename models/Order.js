@@ -1,7 +1,9 @@
 import { Schema, model } from 'mongoose';
+import addressSchema from './address.js';
 
 const orderSchema = new Schema({
   user: { type: Schema.Types.ObjectId, ref: 'User' },
+  address: { type: addressSchema, required:true },
   items: [{
     productId: { type: Schema.Types.ObjectId, ref: 'Product' },
     title: String,
