@@ -15,6 +15,12 @@ export const createProductSchema = Joi.object({
         'string.max': 'Category cannot exceed 50 characters',
         'any.required': 'Category is required',
     }),
+    subCategory: Joi.string().min(2).max(50).messages({
+        'string.base': 'Sub category must be a string',
+        'string.min': 'Sub category must be at least 2 characters long',
+        'string.max': 'Sub category cannot exceed 50 characters',
+        'any.required': 'Sub category is required',
+    }),
     price: Joi.number().min(0).required().messages({
         'number.base': 'Price must be a number',
         'number.min': 'Price must be at least 0',
@@ -58,6 +64,12 @@ export const updateProductSchema = Joi.object({
         'string.base': 'Category must be a string',
         'string.min': 'Category must be at least 2 characters long',
         'string.max': 'Category cannot exceed 50 characters',
+    }),
+    subCategory: Joi.string().min(2).max(50).messages({
+        'string.base': 'Sub category must be a string',
+        'string.min': 'Sub category must be at least 2 characters long',
+        'string.max': 'Sub category cannot exceed 50 characters',
+        'any.required': 'Sub category is required',
     }),
     price: Joi.number().min(0).optional().messages({
         'number.base': 'Price must be a number',

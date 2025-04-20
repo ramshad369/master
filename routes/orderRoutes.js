@@ -1,6 +1,6 @@
 import express from "express";
 const router = express.Router();
-import Order from "../models/order.js";
+import Order from "../models/Order.js";
 import Stripe from "stripe";
 const stripe = new Stripe(process.env.STRIPE_KEY);
 import authMiddleware from "../middlewares/authMiddleware.js";
@@ -47,11 +47,12 @@ router.post("/create-checkout-session", authenticateToken, async (req, res) => {
         product_data: {
           name: item.productId.title,
         },
-        unit_amount: item.productId.price*100,
+        unit_amount: item.productId.price * 100,
       },
       quantity: item.quantity,
     }));
     const orderId = order._id.toString();
+    console.log("lineItems", lineItems);
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
@@ -67,8 +68,7 @@ router.post("/create-checkout-session", authenticateToken, async (req, res) => {
     });
     res.json({ id: session.id });
   } catch (error) {
-    console.log(error, "sdsdsd");
-    
+    console.error("error",error);
     sendError(res, "Error creating order. Please try again.", 500);
   }
 });
@@ -94,12 +94,13 @@ router.get("/user-orders", authenticateToken, async (req, res) => {
       deliveryStatus: order.deliveryStatus,
       deliveryDate: order.deliveryDate,
       createdAt: order.createdAt,
-      order: order.address,
+      address: order.address,
       items: order.items.map((item) => ({
         productId: item.productId._id,
         title: item.productId.title,
         quantity: item.quantity,
         price: item.productId.price,
+        image: item.productId.image,
         total: item.productId.price * item.quantity,
       })),
       totalAmount: order.items.reduce(
@@ -150,10 +151,10 @@ router.get("/:id", authenticateToken, async (req, res) => {
 
 router.get("/", authenticateToken, authorizeRole("admin"), async (req, res) => {
   try {
-    const { status, startDate, endDate, page = 1, limit = 10 } = req.query; // Get filters and pagination params from query string
-
+    let { status, startDate, endDate, page = 1, limit = 10 } = req.query; // Get filters and pagination params from query string
     const filters = {}; // Initialize filters
-
+    page = parseInt(page, 10);
+    limit = parseInt(limit, 10);
     // Apply status filter
     if (status) {
       filters.status = status;
@@ -174,7 +175,7 @@ router.get("/", authenticateToken, authorizeRole("admin"), async (req, res) => {
     const orders = await Order.find(filters)
       .skip(skip) // Skip the previous pages' records
       .limit(limitValue) // Limit the number of results per page
-      .populate("items.productId") // Populate product details in order items
+      .populate("items.productId").populate("user") // Populate product details in order items
       .sort({ createdAt: -1 }); // Optional: Sort by createdAt in descending order
 
           // Calculate the total order amount for each order

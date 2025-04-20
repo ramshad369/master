@@ -26,42 +26,108 @@ const s3Client = new S3Client({
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-/**
- * @route POST /products
- * @desc Create a new product (Admin only)
- */
+import csvParser from 'csv-parser';
+import streamifier from 'streamifier';
+
 router.post(
   '/',
   authenticateToken,
   authorizeRole('admin'),
-  upload.single('image'),
-  validateRequest(createProductSchema),
+  upload.fields([
+    { name: 'image', maxCount: 1 },
+    { name: 'csv', maxCount: 1 }
+  ]),
   async (req, res) => {
-    const { title, category, price, originalPrice, discount, rating, stocks, description } = req.body;
-    const file = req.file;
+    const imageFile = req.files?.image?.[0];
+    const csvFile = req.files?.csv?.[0];
 
-    if (!file) {
-      return sendError(res, 'Image is required. Please upload an image.', 400);
+    // ✅ If CSV file is provided, handle bulk upload
+    if (csvFile) {
+      const results = [];
+      const failed = [];
+
+      try {
+        await new Promise((resolve, reject) => {
+          streamifier.createReadStream(csvFile.buffer)
+            .pipe(csvParser())
+            .on('data', (row) => results.push(row))
+            .on('end', resolve)
+            .on('error', reject);
+        });
+
+        for (const row of results) {
+          try {
+            const {
+              title,
+              category,
+              price,
+              originalPrice,
+              discount,
+              rating,
+              stocks,
+              subCategory,
+              image, // Image URL
+              description
+            } = row;
+
+            if (!title || !price) {
+              failed.push({ row, reason: 'Missing required fields' });
+              continue;
+            }
+
+            const newProduct = new Product({
+              title,
+              category,
+              price: parseFloat(price),
+              originalPrice: parseFloat(originalPrice || 0),
+              discount: parseFloat(discount || 0),
+              rating: parseFloat(rating || 0),
+              stocks: parseInt(stocks || 0),
+              image: image || '',
+              description,
+            });
+
+            await newProduct.save();
+          } catch (err) {
+            failed.push({ row, reason: err.message });
+          }
+        }
+
+        return sendSuccess(res, 'CSV processed successfully', {
+          total: results.length,
+          added: results.length - failed.length,
+          failed,
+        });
+      } catch (error) {
+        console.error(error);
+        return sendError(res, 'Failed to process CSV. Try again.', 500);
+      }
     }
 
+    // ✅ If image is provided, handle single product upload
+    if (!imageFile) {
+      return sendError(res, 'Image is required for single product creation.', 400);
+    }
+
+    const { title, category, price, originalPrice, discount, rating, stocks, description } = req.body;
+
     try {
-      const uploadParams = 
-      {
+      const uploadParams = {
         Bucket: process.env.AWS_BUCKET_NAME,
-        Key: `products/${Date.now()}-${file.originalname}`,
-        Body: file.buffer,
-        ContentType: file.mimetype,
+        Key: `products/${Date.now()}-${imageFile.originalname}`,
+        Body: imageFile.buffer,
+        ContentType: imageFile.mimetype,
         ACL: 'public-read',
       };
 
-      const upload = new Upload({
+      const uploadToS3 = new Upload({
         client: s3Client,
         params: uploadParams,
-        queueSize: 5, // Increases concurrent uploads
-        partSize: 5 * 1024 * 1024, // 5MB parts for multipart upload
+        queueSize: 5,
+        partSize: 5 * 1024 * 1024,
       });
 
-      const { Location } = await upload.done();
+      const { Location } = await uploadToS3.done();
 
       const newProduct = new Product({
         title,
@@ -73,6 +139,7 @@ router.post(
         stocks,
         image: Location,
         description,
+        subCategory
       });
 
       await newProduct.save();
@@ -182,8 +249,9 @@ router.delete(
  */
 router.get('/', async (req, res) => {
   try {
-    const { search, category, minPrice, maxPrice, sort } = req.query;
+    const { search, category, subCategory, minPrice, maxPrice, sort } = req.query;
     let query = {};
+    console.log("req.query", req.query)
 
     if (search) {
       query.$or = [
@@ -194,6 +262,10 @@ router.get('/', async (req, res) => {
 
     if (category) {
       query.category = { $regex: category, $options: 'i' };
+    }
+
+    if(subCategory) {
+      query.subCategory = { $regex: subCategory, $options: 'i' };
     }
 
     if (minPrice || maxPrice) {

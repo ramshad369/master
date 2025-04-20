@@ -307,7 +307,7 @@ router.post("/login", validateRequest(loginSchema), async (req, res) => {
 });
 
 // User Profile Route
-router.get("/profile/:id", authenticateToken, async (req, res) => {
+router.get("/profile/:id", async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select("-password"); // Exclude password
     if (!user) {
@@ -342,6 +342,20 @@ router.get("/profile", authenticateToken, async (req, res) => {
       );
     }
   });
+
+
+  router.get("/currentUserDetails", authenticateToken, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id).select("-password");
+        if (!user) return sendError(res, " not found.", 400);
+        sendSuccess(res, "Users fetched successfully", {
+            user,
+        });
+    } catch (error) {
+        console.error("Error fetching users:", error);
+        sendError(res, "An error occurred while fetching users.", 500);
+    }
+});
 
 // Update Profile Route
 router.put(
@@ -575,6 +589,19 @@ router.post("/profile/address", authenticateToken, async (req, res) => {
       console.error("Error setting default address:", error);
       sendError(res, "An error occurred while setting the default address.", 500);
     }
+  });
+
+  router.get("/currentUserDetails", authenticateToken, async (req, res) => {
+      try {
+          const user = await User.findById(req.user.id).select("-password");
+          if (!user) return sendError(res, " not found.", 400);
+          sendSuccess(res, "Users fetched successfully", {
+              user,
+          });
+      } catch (error) {
+          console.error("Error fetching users:", error);
+          sendError(res, "An error occurred while fetching users.", 500);
+      }
   });
   
 export default router;

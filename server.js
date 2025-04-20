@@ -5,10 +5,11 @@ import { config } from "dotenv";
 import cors from "cors";
 import connectDB from "./config/db.js";
 import setupRoutes from "./routes/allRoutes.js";
-import Order from "./models/order.js";
+import Order from "./models/Order.js";
 import Stripe from "stripe";
 import User from "./models/User.js";
 import Cart from "./models/Cart.js";
+import Product from "./models/Product.js";
 import {sendEmail } from "./utils/otpHelper.js";
 import { sendSuccess, sendError } from "./utils/responseHandler.js";
 // Load environment variables
@@ -18,7 +19,12 @@ const stripe = new Stripe(process.env.STRIPE_KEY);
 const app = express();
 
 // Middleware
-app.use(cors());
+const corsOptions = {
+  origin: "http://52.66.237.93:3000", // Frontend's URL
+  credentials: true, // Allow cookies and authorization headers
+};
+
+app.use(cors(corsOptions));
 app.post(
   "/webhook",
   express.raw({ type: "application/json" }),
@@ -52,13 +58,24 @@ app.post(
         await order.save();
 
         // clear cart
-        const cart = await Cart.findOne({ userId: paymentIntent.metadata.userId});
-        if (!cart) return sendError(res, 'Cart already empty.', 404);
+        const cart = await Cart.findOne({
+          userId: paymentIntent.metadata.userId,
+        });
+        if (!cart) return sendError(res, "Cart already empty.", 404);
         cart.items = [];
         await cart.save();
 
+        // 📦 Decrease product stocks
+        for (const item of order.items) {
+          await Product.findByIdAndUpdate(item.productId, {
+            $inc: { stocks: -item.quantity },
+          });
+        }
+
         //send mail
-        const userDetails = await User.findById(paymentIntent.metadata.userId).select("-password");
+        const userDetails = await User.findById(
+          paymentIntent.metadata.userId
+        ).select("-password");
         const subject = "Payment Success - Order Placed";
         const text = `Your payment was successful. Your order (ID: ${orderId}) is confirmed.`;
         await sendEmail(userDetails.email, subject, text);
@@ -100,6 +117,7 @@ app.get("/", (req, res) => {
 
 // Start the server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
 });
+

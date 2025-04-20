@@ -14,6 +14,7 @@ const orderSchema = new Schema({
   paymentIntentId: String,
   paymentMethod: String,
   paymentStatus: String,
+  deliveryAddress: {type: String},
   deliveryStatus: { type: String, enum: ['pending', 'shipped', 'delivered', 'cancelled'], default: 'pending' },
   deliveryDate: { type: Date, default: Date.now },
   createdAt: { type: Date, default: Date.now },

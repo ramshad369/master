@@ -1,6 +1,6 @@
 import express from "express";
 const router = express.Router();
-import Order from "../models/order.js";
+import Order from "../models/Order.js";
 import User from "../models/User.js";
 import authMiddleware from "../middlewares/authMiddleware.js";
 const { authenticateToken, authorizeRole } = authMiddleware;
@@ -10,13 +10,13 @@ import { sendSuccess, sendError } from "../utils/responseHandler.js";
 router.get("/summary", async (req, res) => {
     try {
       const totalSales = await Order.aggregate([
+          { $unwind: "$items" },
         { $unwind: "$items" },
-        { $group: { _id: null, total: { $sum: "$items.price" } } }
+        { $group: { _id: null, total: { $sum: { $multiply: ["$items.price", "$items.quantity"] } } } }
       ]);
       const lastMonthSales = await Order.aggregate([
         { $match: { createdAt: { $gte: new Date(new Date().setMonth(new Date().getMonth() - 1)) } } },
-        { $unwind: "$items" },
-        { $group: { _id: null, total: { $sum: "$items.price" } } }
+        { $group: { _id: null, total: { $sum: { $multiply: ["$items.price", "$items.quantity"] } } } }
       ]);
   
       const totalOrders = await Order.countDocuments();
@@ -59,7 +59,7 @@ router.get("/sales-analysis", authenticateToken, authorizeRole("admin"), async (
       {
         $group: {
           _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } },
-          totalSales: { $sum: "$items.price" },
+          totalSales: { $sum: { $multiply: ["$items.price", "$items.quantity"] } },
         },
       },
     ]);
@@ -79,7 +79,7 @@ router.get("/top-products", authenticateToken, authorizeRole("admin"), async (re
         $group: {
           _id: "$items.productId",
           totalQuantity: { $sum: "$items.quantity" },
-          totalRevenue: { $sum: "$items.price" },
+          totalRevenue: { $sum: { $multiply: ["$items.price", "$items.quantity"] } }
         },
       },
       { $sort: { totalQuantity: -1 } },
