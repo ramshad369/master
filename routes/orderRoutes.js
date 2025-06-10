@@ -8,20 +8,38 @@ const { authenticateToken, authorizeRole } = authMiddleware;
 import { sendSuccess, sendError } from "../utils/responseHandler.js";
 import User from "../models/User.js";
 import {sendEmail } from "../utils/otpHelper.js";
+import { convertPrice } from '../utils/currencyConverter.js'; // import converter
+
 
 router.post("/create-checkout-session", authenticateToken, async (req, res) => {
   try {
-    const { cartItems, cartId, address } = req.body;
+    const { cartItems, cartId, address, currency = "USD" } = req.body;
     const userId = req.user.id;
     console.log("cartItems", cartItems);
     const currentDate = new Date();
     const deliveryDate = new Date(
       currentDate.setDate(currentDate.getDate() + 5)
     );
-    if (!address || !address.address1 || !address.city || !address.state || !address.zipCode || !address.country || !address.phone) {
-      return sendError(res, "Invalid address format. Please provide complete address details.", 400);
+    if (
+      !address ||
+      !address.address1 ||
+      !address.city ||
+      !address.state ||
+      !address.zipCode ||
+      !address.country ||
+      !address.phone
+    ) {
+      return sendError(
+        res,
+        "Invalid address format. Please provide complete address details.",
+        400
+      );
     }
 
+    const { convertedPrice, rate } = await convertPrice(
+      item.productId.price,
+      currency
+    );
     // Create the order without payment details first
     const order = new Order({
       user: userId,
@@ -30,24 +48,32 @@ router.post("/create-checkout-session", authenticateToken, async (req, res) => {
         title: item.productId.title,
         quantity: item.quantity,
         price: item.productId.price,
+        priceInOrderCurrency: parseFloat(convertedPrice.toFixed(2)), // store converted price for this order
       })),
       status: "pending",
       deliveryStatus: "pending",
       createdAt: new Date(),
       deliveryDate: deliveryDate,
-      address: address
+      address: address,
     });
+
+    // Optionally store rate from first product (assuming all use same base currency → safe in your current schema)
+    const firstRate = await convertPrice(
+      cartItems[0].productId.price,
+      currency
+    );
+    order.exchangeRateUsed = firstRate.rate;
     
     await order.save(); // Save the order in the database
     console.log("Order created without payment details:", order);
 
     const lineItems = cartItems.map((item) => ({
       price_data: {
-        currency: "inr",
+        currency: currency.toLowerCase(), // Stripe expects lowercase currency codes
         product_data: {
           name: item.productId.title,
         },
-        unit_amount: item.productId.price * 100,
+        unit_amount: Math.round(convertedPrice * 100), // Stripe expects smallest unit (paise, cents, etc.)
       },
       quantity: item.quantity,
     }));

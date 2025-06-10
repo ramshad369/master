@@ -6,6 +6,7 @@ const productSchema = new Schema({
     subCategory: { type: String },
     price: { type: Number, required: true },
     originalPrice: { type: Number },
+    baseCurrency: { type: String, required: true, default: 'USD' }, // New field
     discount: { type: Number },
     rating: { type: Number },
     image: { type: String, required: true },

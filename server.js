@@ -12,6 +12,7 @@ import Cart from "./models/Cart.js";
 import Product from "./models/Product.js";
 import {sendEmail } from "./utils/otpHelper.js";
 import { sendSuccess, sendError } from "./utils/responseHandler.js";
+import { scheduleExchangeRateUpdates } from './cron/updateExchangeRates.js';
 // Load environment variables
 config();
 const stripe = new Stripe(process.env.STRIPE_KEY);
@@ -24,7 +25,7 @@ const corsOptions = {
   credentials: true, // Allow cookies and authorization headers
 };
 
-app.use(cors(corsOptions));
+app.use(cors());
 app.post(
   "/webhook",
   express.raw({ type: "application/json" }),
@@ -114,6 +115,8 @@ setupRoutes(app); // Load all routes using the route loader
 app.get("/", (req, res) => {
   res.json({ message: "Welcome to the API!" });
 });
+
+scheduleExchangeRateUpdates();
 
 // Start the server
 const PORT = process.env.PORT || 5000;

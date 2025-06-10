@@ -8,8 +8,12 @@ const orderSchema = new Schema({
     productId: { type: Schema.Types.ObjectId, ref: 'Product' },
     title: String,
     quantity: Number,
-    price: Number,
+    price: Number, // price in BASE currency
+    priceInOrderCurrency: Number, // NEW: price * exchangeRate
   }],
+  baseCurrency: { type: String, required: true, default: 'USD' },
+  orderCurrency: { type: String, required: true }, // User selected currency (e.g. INR, EUR)
+  exchangeRateUsed: { type: Number, required: true }, // Rate used for this order
   status: { type: String, enum: ['pending', 'paid', 'cancelled'], default: 'pending' },
   paymentIntentId: String,
   paymentMethod: String,

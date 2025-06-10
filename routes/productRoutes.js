@@ -7,6 +7,7 @@ import { S3Client } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import { createProductSchema, updateProductSchema } from '../validator/productValidator.js';
 import { validateRequest } from '../middlewares/validator.js';
+import { convertPrice } from '../utils/currencyConverter.js';
 
 const router = Router();
 const { authenticateToken, authorizeRole } = authMiddleware;
@@ -78,6 +79,7 @@ router.post(
             const newProduct = new Product({
               title,
               category,
+              subCategory:subCategory||null,
               price: parseFloat(price),
               originalPrice: parseFloat(originalPrice || 0),
               discount: parseFloat(discount || 0),
@@ -109,7 +111,7 @@ router.post(
       return sendError(res, 'Image is required for single product creation.', 400);
     }
 
-    const { title, category, price, originalPrice, discount, rating, stocks, description } = req.body;
+    const { title, category, price, originalPrice, discount, rating, stocks, description, subCategory } = req.body;
 
     try {
       const uploadParams = {
@@ -128,18 +130,18 @@ router.post(
       });
 
       const { Location } = await uploadToS3.done();
-
+    
       const newProduct = new Product({
         title,
         category,
-        price,
-        originalPrice,
-        discount,
-        rating,
-        stocks,
+        price: parseFloat(price),
+        originalPrice: parseFloat(originalPrice || 0),
+        discount: parseFloat(discount || 0),
+        rating: parseFloat(rating || 0),
+        stocks: parseInt(stocks || 0),
         image: Location,
         description,
-        subCategory
+        subCategory:subCategory||null
       });
 
       await newProduct.save();
@@ -282,7 +284,16 @@ router.get('/', async (req, res) => {
     }
 
     const products = await Product.find(query).sort(sortCriteria);
-    sendSuccess(res, 'Products fetched successfully', products, 200);
+    const productsWithConvertedPrice = await Promise.all(products.map(async p => {
+      const { convertedPrice } = await convertPrice(p.price, currency);
+      return {
+        ...p.toObject(),
+        price: parseFloat(convertedPrice.toFixed(2)),
+        currency
+      };
+    }));
+
+    sendSuccess(res, 'Products fetched successfully', productsWithConvertedPrice, 200);
   } catch (error) {
     console.error(error);
     sendError(res, 'There was an issue fetching the products. Please try again later.', 500);

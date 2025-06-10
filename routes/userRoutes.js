@@ -401,15 +401,17 @@ router.put(
         500
       );
     }
+
+
   }
 );
 
 // Resend OTP Route
 router.post("/resend-otp", async (req, res) => {
-  const { userId } = req.body;
+  const { phoneNumber } = req.body;
 
   try {
-    const user = await User.findById(userId);
+    const user = await User.findOne({phoneNumber:phoneNumber});
 
     if (!user) {
       return sendError(res, "User not found.", 404);
