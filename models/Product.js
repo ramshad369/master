@@ -9,7 +9,7 @@ const productSchema = new Schema({
     baseCurrency: { type: String, required: true, default: 'USD' }, // New field
     discount: { type: Number },
     rating: { type: Number },
-    image: { type: String, required: true },
+    image: { type: [String], required: true },
     stocks: { type: Number, required: true, default: 0 },
     description: { type: String, required: true }, // New required field
 }, { timestamps: true });

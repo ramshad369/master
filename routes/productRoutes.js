@@ -15,7 +15,7 @@ const { authenticateToken, authorizeRole } = authMiddleware;
 // Configure AWS S3 client
 const s3Client = new S3Client({
   region: process.env.AWS_REGION,
-  endpoint: 'https://s3-accelerate.amazonaws.com', // Correct endpoint
+  endpoint: "https://s3-accelerate.amazonaws.com", // Correct endpoint
   forcePathStyle: false, // Ensures proper bucket addressing
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -27,19 +27,19 @@ const s3Client = new S3Client({
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-import csvParser from 'csv-parser';
-import streamifier from 'streamifier';
+import csvParser from "csv-parser";
+import streamifier from "streamifier";
 
 router.post(
-  '/',
+  "/",
   authenticateToken,
-  authorizeRole('admin'),
+  authorizeRole("admin"),
   upload.fields([
-    { name: 'image', maxCount: 1 },
-    { name: 'csv', maxCount: 1 }
+    { name: "image", maxCount: 5 },
+    { name: "csv", maxCount: 1 },
   ]),
   async (req, res) => {
-    const imageFile = req.files?.image?.[0];
+    const imageFiles = req.files?.image || [];
     const csvFile = req.files?.csv?.[0];
 
     // ✅ If CSV file is provided, handle bulk upload
@@ -49,11 +49,12 @@ router.post(
 
       try {
         await new Promise((resolve, reject) => {
-          streamifier.createReadStream(csvFile.buffer)
+          streamifier
+            .createReadStream(csvFile.buffer)
             .pipe(csvParser())
-            .on('data', (row) => results.push(row))
-            .on('end', resolve)
-            .on('error', reject);
+            .on("data", (row) => results.push(row))
+            .on("end", resolve)
+            .on("error", reject);
         });
 
         for (const row of results) {
@@ -68,11 +69,11 @@ router.post(
               stocks,
               subCategory,
               image, // Image URL
-              description
+              description,
             } = row;
 
             if (!title || !price) {
-              failed.push({ row, reason: 'Missing required fields' });
+              failed.push({ row, reason: "Missing required fields" });
               continue;
             }
 
@@ -85,7 +86,7 @@ router.post(
               discount: parseFloat(discount || 0),
               rating: parseFloat(rating || 0),
               stocks: parseInt(stocks || 0),
-              image: image || '',
+              image: image || "",
               description,
             });
 
@@ -95,42 +96,49 @@ router.post(
           }
         }
 
-        return sendSuccess(res, 'CSV processed successfully', {
+        return sendSuccess(res, "CSV processed successfully", {
           total: results.length,
           added: results.length - failed.length,
           failed,
         });
       } catch (error) {
         console.error(error);
-        return sendError(res, 'Failed to process CSV. Try again.', 500);
+        return sendError(res, "Failed to process CSV. Try again.", 500);
       }
     }
 
     // ✅ If image is provided, handle single product upload
-    if (!imageFile) {
-      return sendError(res, 'Image is required for single product creation.', 400);
+    if (!imageFiles) {
+      return sendError(
+        res,
+        "Image is required for single product creation.",
+        400
+      );
     }
 
     const { title, category, price, originalPrice, discount, rating, stocks, description, subCategory } = req.body;
 
     try {
-      const uploadParams = {
-        Bucket: process.env.AWS_BUCKET_NAME,
-        Key: `products/${Date.now()}-${imageFile.originalname}`,
-        Body: imageFile.buffer,
-        ContentType: imageFile.mimetype,
-        ACL: 'public-read',
-      };
+      const imageUrls = [];
 
-      const uploadToS3 = new Upload({
-        client: s3Client,
-        params: uploadParams,
-        queueSize: 5,
-        partSize: 5 * 1024 * 1024,
-      });
+      for (const file of imageFiles) {
+        const uploadParams = {
+          Bucket: process.env.AWS_BUCKET_NAME,
+          Key: `products/${Date.now()}-${file.originalname}`,
+          Body: file.buffer,
+          ContentType: file.mimetype,
+          ACL: "public-read",
+        };
 
-      const { Location } = await uploadToS3.done();
-    
+        const uploadToS3 = new Upload({
+          client: s3Client,
+          params: uploadParams,
+        });
+
+        const { Location } = await uploadToS3.done();
+        imageUrls.push(Location);
+      }
+
       const newProduct = new Product({
         title,
         category,
@@ -139,16 +147,25 @@ router.post(
         discount: parseFloat(discount || 0),
         rating: parseFloat(rating || 0),
         stocks: parseInt(stocks || 0),
-        image: Location,
+        image: imageUrls,
         description,
-        subCategory:subCategory||null
+        subCategory: subCategory || null,
       });
 
       await newProduct.save();
-      sendSuccess(res, 'Product created successfully', { product: newProduct }, 201);
+      sendSuccess(
+        res,
+        "Product created successfully",
+        { product: newProduct },
+        201
+      );
     } catch (error) {
       console.error(error);
-      sendError(res, 'There was an issue creating the product. Please try again later.', 500);
+      sendError(
+        res,
+        "There was an issue creating the product. Please try again later.",
+        500
+      );
     }
   }
 );
@@ -158,41 +175,56 @@ router.post(
  * @desc Update an existing product (Admin only)
  */
 router.put(
-  '/:id',
+  "/:id",
   authenticateToken,
-  authorizeRole('admin'),
-  upload.single('image'),
+  authorizeRole("admin"),
+  upload.array("images", 5), // Allow up to 5 images per product
   validateRequest(updateProductSchema),
   async (req, res) => {
     const { id } = req.params;
-    const { title, category, price, originalPrice, discount, rating, stocks, description } = req.body;
-    const file = req.file;
+    const {
+      title,
+      category,
+      price,
+      originalPrice,
+      discount,
+      rating,
+      stocks,
+      description,
+      subCategory,
+    } = req.body;
+    const imageFiles = req.files || [];
 
     try {
       const existingProduct = await Product.findById(id);
       if (!existingProduct) {
-        return sendError(res, 'Product not found. Please check the product ID or try again later.', 404);
+        return sendError(
+          res,
+          "Product not found. Please check the product ID or try again later.",
+          404
+        );
       }
 
-      let imageUrl = existingProduct.image;
-      if (file) {
+      let imageUrls = [...(existingProduct.image || [])]; // preserve existing images
+
+      for (const file of imageFiles) {
         const uploadParams = {
           Bucket: process.env.AWS_BUCKET_NAME,
           Key: `products/${Date.now()}-${file.originalname}`,
           Body: file.buffer,
           ContentType: file.mimetype,
-          ACL: 'public-read',
+          ACL: "public-read",
         };
 
         const upload = new Upload({
           client: s3Client,
           params: uploadParams,
-          queueSize: 5, // Increases concurrent uploads
-          partSize: 5 * 1024 * 1024, // 5MB parts for multipart upload
+          queueSize: 5,
+          partSize: 5 * 1024 * 1024,
         });
 
         const { Location } = await upload.done();
-        imageUrl = Location;
+        imageUrls.push(Location);
       }
 
       const updatedProduct = await Product.findByIdAndUpdate(
@@ -205,16 +237,26 @@ router.put(
           discount,
           rating,
           image: imageUrl,
+          subCategory:subCategory,
           stocks: stocks !== undefined ? stocks : existingProduct.stocks,
           description,
         },
         { new: true }
       );
 
-      sendSuccess(res, 'Product updated successfully', { product: updatedProduct }, 200);
+      sendSuccess(
+        res,
+        "Product updated successfully",
+        { product: updatedProduct },
+        200
+      );
     } catch (error) {
       console.error(error);
-      sendError(res, 'There was an issue updating the product. Please try again later.', 500);
+      sendError(
+        res,
+        "There was an issue updating the product. Please try again later.",
+        500
+      );
     }
   }
 );
@@ -224,9 +266,9 @@ router.put(
  * @desc Delete a product (Admin only)
  */
 router.delete(
-  '/:id',
+  "/:id",
   authenticateToken,
-  authorizeRole('admin'),
+  authorizeRole("admin"),
   async (req, res) => {
     const { id } = req.params;
 
@@ -234,13 +276,26 @@ router.delete(
       const deletedProduct = await Product.findByIdAndDelete(id);
 
       if (!deletedProduct) {
-        return sendError(res, 'Product not found. Please check the product ID or try again later.', 404);
+        return sendError(
+          res,
+          "Product not found. Please check the product ID or try again later.",
+          404
+        );
       }
 
-      sendSuccess(res, 'Product deleted successfully', { product: deletedProduct }, 200);
+      sendSuccess(
+        res,
+        "Product deleted successfully",
+        { product: deletedProduct },
+        200
+      );
     } catch (error) {
       console.error(error);
-      sendError(res, 'There was an issue deleting the product. Please try again later.', 500);
+      sendError(
+        res,
+        "There was an issue deleting the product. Please try again later.",
+        500
+      );
     }
   }
 );
@@ -249,25 +304,33 @@ router.delete(
  * @route GET /products
  * @desc Fetch all products with optional filters and sorting
  */
-router.get('/', async (req, res) => {
+router.get("/", async (req, res) => {
   try {
-    const { search, category, subCategory, minPrice, maxPrice, sort } = req.query;
+    const {
+      search,
+      category,
+      subCategory,
+      minPrice,
+      maxPrice,
+      sort,
+      currency = "USD",
+    } = req.query;
     let query = {};
-    console.log("req.query", req.query)
+    console.log("req.query", req.query);
 
     if (search) {
       query.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { category: { $regex: search, $options: 'i' } },
+        { title: { $regex: search, $options: "i" } },
+        { category: { $regex: search, $options: "i" } },
       ];
     }
 
     if (category) {
-      query.category = { $regex: category, $options: 'i' };
+      query.category = { $regex: category, $options: "i" };
     }
 
-    if(subCategory) {
-      query.subCategory = { $regex: subCategory, $options: 'i' };
+    if (subCategory) {
+      query.subCategory = { $regex: subCategory, $options: "i" };
     }
 
     if (minPrice || maxPrice) {
@@ -278,9 +341,9 @@ router.get('/', async (req, res) => {
 
     let sortCriteria = {};
     if (sort) {
-      if (sort === 'price-low-high') sortCriteria.price = 1;
-      else if (sort === 'price-high-low') sortCriteria.price = -1;
-      else if (sort === 'newest') sortCriteria.createdAt = -1;
+      if (sort === "price-low-high") sortCriteria.price = 1;
+      else if (sort === "price-high-low") sortCriteria.price = -1;
+      else if (sort === "newest") sortCriteria.createdAt = -1;
     }
 
     const products = await Product.find(query).sort(sortCriteria);
@@ -296,7 +359,11 @@ router.get('/', async (req, res) => {
     sendSuccess(res, 'Products fetched successfully', productsWithConvertedPrice, 200);
   } catch (error) {
     console.error(error);
-    sendError(res, 'There was an issue fetching the products. Please try again later.', 500);
+    sendError(
+      res,
+      "There was an issue fetching the products. Please try again later.",
+      500
+    );
   }
 });
 
@@ -304,19 +371,27 @@ router.get('/', async (req, res) => {
  * @route GET /products/:id
  * @desc Fetch a single product by ID
  */
-router.get('/:id', async (req, res) => {
+router.get("/:id", async (req, res) => {
   const { id } = req.params;
 
   try {
     const product = await Product.findById(id);
     if (!product) {
-      return sendError(res, 'Product not found. Please check the product ID or try again later.', 404);
+      return sendError(
+        res,
+        "Product not found. Please check the product ID or try again later.",
+        404
+      );
     }
 
-    sendSuccess(res, 'Product fetched successfully', product, 200);
+    sendSuccess(res, "Product fetched successfully", product, 200);
   } catch (error) {
     console.error(error);
-    sendError(res, 'There was an issue fetching the product. Please try again later.', 500);
+    sendError(
+      res,
+      "There was an issue fetching the product. Please try again later.",
+      500
+    );
   }
 });
 
